@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "tee-plugins",
+  "owner": { "name": "TODO-AUTHOR" },
+  "description": "Interactive C4-style architecture diagrams generated from source code.",
+  "plugins": [
+    {
+      "name": "draw-c4",
+      "source": "./",
+      "description": "Generate/refresh a self-contained interactive C4 architecture diagram (HTML) from a codebase.",
+      "version": "0.1.0"
+    }
+  ]
+}

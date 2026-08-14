@@ -1,0 +1,863 @@
+{
+  "name": "Encore",
+  "tagline": "live event ticketing",
+  "entry": "containers",
+  "levels": {
+    "context": {
+      "id": "context",
+      "name": "Context",
+      "label": "Encore in the world",
+      "blurb": "Who touches the ticketing platform, and what it depends on to do its job.",
+      "canvas": {
+        "w": 1260,
+        "h": 700
+      },
+      "nodes": [
+        {
+          "id": "fan",
+          "name": "Ticket buyer",
+          "kind": "person",
+          "tech": "web + mobile browser",
+          "x": 70,
+          "y": 120,
+          "desc": "Finds a show, picks seats, pays. Expects the seat they picked to still be there 90 seconds later."
+        },
+        {
+          "id": "promoter",
+          "name": "Promoter",
+          "kind": "person",
+          "tech": "box office console",
+          "x": 70,
+          "y": 400,
+          "desc": "Publishes shows, sets price bands and on-sale times, watches sales in real time."
+        },
+        {
+          "id": "encore",
+          "name": "Encore Ticketing",
+          "kind": "focus",
+          "tech": "the system in question",
+          "x": 470,
+          "y": 250,
+          "w": 280,
+          "h": 130,
+          "drill": "containers",
+          "desc": "Sells seats for live events. Holds inventory, takes money, issues tickets and lets staff scan them at the door."
+        },
+        {
+          "id": "gate",
+          "name": "Gate scanner app",
+          "kind": "external",
+          "tech": "iOS · offline-tolerant",
+          "x": 490,
+          "y": 530,
+          "desc": "Handheld scanners at the venue. Works without signal and reconciles scans when it reconnects."
+        },
+        {
+          "id": "stripe",
+          "name": "Stripe",
+          "kind": "external",
+          "tech": "payments",
+          "x": 960,
+          "y": 110,
+          "desc": "Card authorisation and capture. Encore never stores a card number."
+        },
+        {
+          "id": "comms",
+          "name": "Twilio + SendGrid",
+          "kind": "external",
+          "tech": "email + SMS",
+          "x": 960,
+          "y": 290,
+          "desc": "Delivers tickets, receipts, door-time reminders and release notices."
+        },
+        {
+          "id": "ledger",
+          "name": "NetSuite",
+          "kind": "external",
+          "tech": "finance",
+          "x": 960,
+          "y": 470,
+          "desc": "Receives a nightly settlement file: gross sales, fees, refunds, per promoter."
+        }
+      ],
+      "edges": [
+        {
+          "from": "fan",
+          "to": "encore",
+          "label": "browses, holds seats, pays"
+        },
+        {
+          "from": "promoter",
+          "to": "encore",
+          "label": "publishes shows, sets pricing"
+        },
+        {
+          "from": "gate",
+          "to": "encore",
+          "label": "validates tickets at the door"
+        },
+        {
+          "from": "encore",
+          "to": "stripe",
+          "label": "authorise + capture"
+        },
+        {
+          "from": "encore",
+          "to": "comms",
+          "label": "ticket delivery + reminders",
+          "kind": "async"
+        },
+        {
+          "from": "encore",
+          "to": "ledger",
+          "label": "nightly settlement file",
+          "kind": "async"
+        }
+      ]
+    },
+    "containers": {
+      "id": "containers",
+      "name": "Containers",
+      "label": "Inside Encore Ticketing",
+      "parent": "context",
+      "blurb": "The deployable pieces and the stores they own. Dashed lines are asynchronous — nobody is waiting on the other end.",
+      "canvas": {
+        "w": 1560,
+        "h": 960
+      },
+      "nodes": [
+        {
+          "id": "web",
+          "name": "Box office web",
+          "kind": "client",
+          "tech": "Next.js · Vercel",
+          "x": 60,
+          "y": 150,
+          "desc": "Public storefront and the promoter console. Server-renders the seat map, then talks JSON for everything after that."
+        },
+        {
+          "id": "gateapp",
+          "name": "Gate scanner app",
+          "kind": "external",
+          "tech": "iOS · Swift",
+          "x": 60,
+          "y": 540,
+          "desc": "Queues scans locally when the venue wifi drops and replays them in order once it is back."
+        },
+        {
+          "id": "edge",
+          "name": "API gateway",
+          "kind": "service",
+          "tech": "Envoy · authn, rate limits",
+          "x": 330,
+          "y": 330,
+          "desc": "One front door. Verifies the session, attaches tenant and trace id, sheds load per promoter during an on-sale rush."
+        },
+        {
+          "id": "catalog",
+          "name": "Catalog service",
+          "kind": "service",
+          "tech": "Go",
+          "x": 620,
+          "y": 70,
+          "desc": "Shows, venues, seat maps, price bands. Read-heavy and aggressively cached — this is what survives the on-sale spike."
+        },
+        {
+          "id": "inventory",
+          "name": "Seat inventory",
+          "kind": "service",
+          "tech": "Rust",
+          "x": 620,
+          "y": 220,
+          "drill": "inventory.components",
+          "desc": "The only thing allowed to say a seat is taken. Places short-lived holds, promotes them to allocations, releases them when they lapse."
+        },
+        {
+          "id": "orders",
+          "name": "Order service",
+          "kind": "service",
+          "tech": "Kotlin · Spring",
+          "x": 620,
+          "y": 370,
+          "drill": "orders.components",
+          "desc": "Owns the checkout saga: confirm the hold, price it, charge it, record it, announce it. Compensates in reverse if any step fails."
+        },
+        {
+          "id": "scanapi",
+          "name": "Gate API",
+          "kind": "service",
+          "tech": "Go",
+          "x": 620,
+          "y": 560,
+          "desc": "Validates a scanned barcode against the order state and rejects the second scan of the same ticket."
+        },
+        {
+          "id": "catalogdb",
+          "name": "Catalog store",
+          "kind": "store",
+          "tech": "Postgres · read replicas",
+          "x": 900,
+          "y": 70,
+          "desc": "Show and seat-map definitions. Written rarely, read constantly."
+        },
+        {
+          "id": "holds",
+          "name": "Hold store",
+          "kind": "store",
+          "tech": "Redis · TTL 480s",
+          "x": 900,
+          "y": 220,
+          "desc": "One key per held seat with an eight-minute expiry. The expiry is the business rule — nothing needs to remember to clean up."
+        },
+        {
+          "id": "ordersdb",
+          "name": "Order store",
+          "kind": "store",
+          "tech": "Postgres · outbox table",
+          "x": 900,
+          "y": 370,
+          "desc": "Orders, line items, idempotency keys and an outbox so an order and its event are committed together."
+        },
+        {
+          "id": "payadapter",
+          "name": "Payment adapter",
+          "kind": "service",
+          "tech": "Node · webhook sink",
+          "x": 900,
+          "y": 500,
+          "desc": "Wraps Stripe. Translates their objects into ours and turns late webhooks into events the rest of us understand."
+        },
+        {
+          "id": "stripe",
+          "name": "Stripe",
+          "kind": "external",
+          "tech": "payments",
+          "x": 1190,
+          "y": 500,
+          "desc": "External card processor."
+        },
+        {
+          "id": "bus",
+          "name": "Event bus",
+          "kind": "queue",
+          "tech": "Kafka · 6 topics",
+          "x": 330,
+          "y": 740,
+          "w": 540,
+          "h": 70,
+          "desc": "Everything that already happened gets announced here: order.paid, hold.expired, ticket.issued, ticket.scanned."
+        },
+        {
+          "id": "fulfilment",
+          "name": "Ticket issuer",
+          "kind": "service",
+          "tech": "Python · consumer",
+          "x": 960,
+          "y": 700,
+          "desc": "Mints the barcode, renders the PDF and the wallet pass, then announces ticket.issued."
+        },
+        {
+          "id": "notify",
+          "name": "Notifier",
+          "kind": "service",
+          "tech": "Go · consumer",
+          "x": 960,
+          "y": 830,
+          "desc": "Turns events into messages people actually receive, with per-recipient deduplication."
+        },
+        {
+          "id": "comms",
+          "name": "Twilio + SendGrid",
+          "kind": "external",
+          "tech": "email + SMS",
+          "x": 1250,
+          "y": 830,
+          "desc": "External delivery."
+        }
+      ],
+      "edges": [
+        {
+          "from": "web",
+          "to": "edge",
+          "label": "HTTPS · JSON"
+        },
+        {
+          "from": "gateapp",
+          "to": "edge",
+          "label": "HTTPS · batched scans"
+        },
+        {
+          "from": "edge",
+          "to": "catalog",
+          "label": "GET /events, /seatmap"
+        },
+        {
+          "from": "edge",
+          "to": "inventory",
+          "label": "POST /holds"
+        },
+        {
+          "from": "edge",
+          "to": "orders",
+          "label": "POST /orders"
+        },
+        {
+          "from": "edge",
+          "to": "scanapi",
+          "label": "POST /scans"
+        },
+        {
+          "from": "catalog",
+          "to": "catalogdb",
+          "label": "SQL · read replica"
+        },
+        {
+          "from": "inventory",
+          "to": "holds",
+          "label": "SETNX seat key, TTL"
+        },
+        {
+          "from": "orders",
+          "to": "inventory",
+          "label": "gRPC ConfirmHold"
+        },
+        {
+          "from": "orders",
+          "to": "ordersdb",
+          "label": "SQL · one tx"
+        },
+        {
+          "from": "orders",
+          "to": "payadapter",
+          "label": "POST /charge"
+        },
+        {
+          "from": "payadapter",
+          "to": "stripe",
+          "label": "PaymentIntent"
+        },
+        {
+          "from": "scanapi",
+          "to": "orders",
+          "label": "gRPC LookupTicket"
+        },
+        {
+          "from": "orders",
+          "to": "bus",
+          "label": "order.paid",
+          "kind": "async"
+        },
+        {
+          "from": "inventory",
+          "to": "bus",
+          "label": "hold.expired",
+          "kind": "async"
+        },
+        {
+          "from": "scanapi",
+          "to": "bus",
+          "label": "ticket.scanned",
+          "kind": "async"
+        },
+        {
+          "from": "payadapter",
+          "to": "bus",
+          "label": "payment.settled",
+          "kind": "async"
+        },
+        {
+          "from": "bus",
+          "to": "fulfilment",
+          "label": "order.paid",
+          "kind": "async"
+        },
+        {
+          "from": "bus",
+          "to": "notify",
+          "label": "order.paid, hold.expired",
+          "kind": "async"
+        },
+        {
+          "from": "fulfilment",
+          "to": "bus",
+          "label": "ticket.issued",
+          "kind": "async"
+        },
+        {
+          "from": "notify",
+          "to": "comms",
+          "label": "send"
+        }
+      ]
+    },
+    "orders.components": {
+      "id": "orders.components",
+      "name": "Order service",
+      "label": "Inside the order service",
+      "parent": "containers",
+      "blurb": "A saga in seven moves. Anything to the right of the dividing line lives outside this container.",
+      "canvas": {
+        "w": 1300,
+        "h": 640
+      },
+      "nodes": [
+        {
+          "id": "ctrl",
+          "name": "OrderController",
+          "kind": "component",
+          "tech": "HTTP · /v1/orders",
+          "x": 60,
+          "y": 100,
+          "desc": "Validates the request body, pulls the idempotency key off the header, hands off. Contains no business rules on purpose."
+        },
+        {
+          "id": "idem",
+          "name": "IdempotencyGuard",
+          "kind": "component",
+          "tech": "wrapper",
+          "x": 60,
+          "y": 320,
+          "desc": "A retried checkout must not charge twice. First writer wins; everyone else gets the stored response."
+        },
+        {
+          "id": "saga",
+          "name": "CheckoutSaga",
+          "kind": "component",
+          "tech": "orchestrator",
+          "x": 390,
+          "y": 210,
+          "desc": "The one place that knows the order of operations, and the one place that knows how to undo them."
+        },
+        {
+          "id": "pricing",
+          "name": "PricingEngine",
+          "kind": "component",
+          "tech": "pure functions",
+          "x": 390,
+          "y": 430,
+          "desc": "Price band, fees, promoter rebate, tax. No I/O, so it is the easiest thing here to test."
+        },
+        {
+          "id": "invclient",
+          "name": "InventoryClient",
+          "kind": "component",
+          "tech": "gRPC · 400ms budget",
+          "x": 720,
+          "y": 60,
+          "desc": "Confirms the hold. On timeout it assumes failure and lets the saga compensate."
+        },
+        {
+          "id": "payclient",
+          "name": "PaymentClient",
+          "kind": "component",
+          "tech": "HTTP · retries off",
+          "x": 720,
+          "y": 210,
+          "desc": "Charges once. Retries are deliberately disabled — reconciliation is the payment adapter's job."
+        },
+        {
+          "id": "repo",
+          "name": "OrderRepository",
+          "kind": "component",
+          "tech": "JDBC · outbox write",
+          "x": 720,
+          "y": 360,
+          "desc": "Writes the order and its outgoing event in the same transaction. No event, no order."
+        },
+        {
+          "id": "pub",
+          "name": "OutboxPublisher",
+          "kind": "component",
+          "tech": "poller · at-least-once",
+          "x": 720,
+          "y": 500,
+          "desc": "Drains the outbox to Kafka. Consumers must tolerate a duplicate, and they do."
+        },
+        {
+          "id": "x-inv",
+          "name": "Seat inventory",
+          "kind": "external",
+          "tech": "container boundary",
+          "x": 1040,
+          "y": 60,
+          "desc": "Another container."
+        },
+        {
+          "id": "x-pay",
+          "name": "Payment adapter",
+          "kind": "external",
+          "tech": "container boundary",
+          "x": 1040,
+          "y": 210,
+          "desc": "Another container."
+        },
+        {
+          "id": "x-db",
+          "name": "Order store",
+          "kind": "store",
+          "tech": "Postgres",
+          "x": 1040,
+          "y": 360,
+          "desc": "This container owns it."
+        },
+        {
+          "id": "x-bus",
+          "name": "Event bus",
+          "kind": "queue",
+          "tech": "Kafka",
+          "x": 1040,
+          "y": 500,
+          "desc": "Shared bus."
+        }
+      ],
+      "edges": [
+        {
+          "from": "ctrl",
+          "to": "idem",
+          "label": "claim(key)"
+        },
+        {
+          "from": "ctrl",
+          "to": "saga",
+          "label": "start(cart)"
+        },
+        {
+          "from": "saga",
+          "to": "pricing",
+          "label": "quote(cart)"
+        },
+        {
+          "from": "saga",
+          "to": "invclient",
+          "label": "confirmHold(holdId)"
+        },
+        {
+          "from": "saga",
+          "to": "payclient",
+          "label": "charge(quote)"
+        },
+        {
+          "from": "saga",
+          "to": "repo",
+          "label": "save(order, event)"
+        },
+        {
+          "from": "repo",
+          "to": "pub",
+          "label": "outbox row",
+          "kind": "async"
+        },
+        {
+          "from": "idem",
+          "to": "x-db",
+          "label": "keys table"
+        },
+        {
+          "from": "invclient",
+          "to": "x-inv",
+          "label": "gRPC"
+        },
+        {
+          "from": "payclient",
+          "to": "x-pay",
+          "label": "HTTP"
+        },
+        {
+          "from": "repo",
+          "to": "x-db",
+          "label": "SQL"
+        },
+        {
+          "from": "pub",
+          "to": "x-bus",
+          "label": "produce",
+          "kind": "async"
+        }
+      ]
+    },
+    "inventory.components": {
+      "id": "inventory.components",
+      "name": "Seat inventory",
+      "label": "Inside seat inventory",
+      "parent": "containers",
+      "blurb": "Small on purpose. The correctness of the whole platform rests on these four parts.",
+      "canvas": {
+        "w": 1300,
+        "h": 520
+      },
+      "nodes": [
+        {
+          "id": "hctrl",
+          "name": "HoldController",
+          "kind": "component",
+          "tech": "HTTP · /holds",
+          "x": 70,
+          "y": 180,
+          "desc": "Takes a seat list and a session, returns a hold id and the second it expires."
+        },
+        {
+          "id": "alloc",
+          "name": "SeatAllocator",
+          "kind": "component",
+          "tech": "Lua on Redis",
+          "x": 400,
+          "y": 60,
+          "desc": "Claims every requested seat or none of them, in one round trip, so two buyers cannot split a pair."
+        },
+        {
+          "id": "reaper",
+          "name": "ExpiryReaper",
+          "kind": "component",
+          "tech": "keyspace listener",
+          "x": 400,
+          "y": 330,
+          "desc": "Listens for expired hold keys and announces the seats as free again. No polling loop."
+        },
+        {
+          "id": "store",
+          "name": "HoldStore",
+          "kind": "component",
+          "tech": "Redis client",
+          "x": 730,
+          "y": 180,
+          "desc": "The only code allowed to speak to Redis. Keeps the key format in exactly one file."
+        },
+        {
+          "id": "x-redis",
+          "name": "Hold store",
+          "kind": "store",
+          "tech": "Redis",
+          "x": 1050,
+          "y": 180,
+          "desc": "Seat keys with a TTL."
+        },
+        {
+          "id": "x-bus2",
+          "name": "Event bus",
+          "kind": "queue",
+          "tech": "Kafka",
+          "x": 1050,
+          "y": 330,
+          "desc": "Shared bus."
+        }
+      ],
+      "edges": [
+        {
+          "from": "hctrl",
+          "to": "alloc",
+          "label": "hold(seats)"
+        },
+        {
+          "from": "hctrl",
+          "to": "store",
+          "label": "confirm(holdId)"
+        },
+        {
+          "from": "alloc",
+          "to": "store",
+          "label": "claim all-or-none"
+        },
+        {
+          "from": "reaper",
+          "to": "store",
+          "label": "on key expiry"
+        },
+        {
+          "from": "store",
+          "to": "x-redis",
+          "label": "SETNX / EXPIRE / DEL"
+        },
+        {
+          "from": "reaper",
+          "to": "x-bus2",
+          "label": "hold.expired",
+          "kind": "async"
+        }
+      ]
+    }
+  },
+  "flows": [
+    {
+      "id": "buy",
+      "name": "Buy a ticket",
+      "level": "containers",
+      "meta": "11 cues · happy path",
+      "cues": [
+        {
+          "from": "web",
+          "to": "edge",
+          "title": "Checkout submitted",
+          "note": "The browser posts the hold id and a Stripe payment token. <b>Idempotency-Key</b> is set from the cart, so a double-click is harmless."
+        },
+        {
+          "from": "edge",
+          "to": "orders",
+          "title": "Routed",
+          "note": "Gateway checks the session, stamps tenant and <b>trace-id</b>, forwards to the order service."
+        },
+        {
+          "from": "orders",
+          "to": "inventory",
+          "title": "Confirm the hold",
+          "note": "The saga asks inventory to promote the hold to an allocation. <b>400ms budget</b> — a timeout is treated as a no."
+        },
+        {
+          "from": "inventory",
+          "to": "holds",
+          "title": "Seats locked down",
+          "note": "The hold key loses its TTL and becomes permanent. From here the seats belong to this order."
+        },
+        {
+          "from": "orders",
+          "to": "payadapter",
+          "title": "Charge",
+          "note": "<b>£74.50</b> for two stalls seats plus fee. Retries are off; one attempt only."
+        },
+        {
+          "from": "payadapter",
+          "to": "stripe",
+          "title": "Captured",
+          "note": "PaymentIntent confirmed against the token the browser already collected."
+        },
+        {
+          "from": "orders",
+          "to": "ordersdb",
+          "title": "Order written",
+          "note": "Order rows and the <b>order.paid</b> outbox row commit in one transaction. This is the point of no return."
+        },
+        {
+          "from": "orders",
+          "to": "bus",
+          "title": "Announced",
+          "note": "The outbox publisher drains the row onto Kafka. At-least-once, so consumers deduplicate."
+        },
+        {
+          "from": "bus",
+          "to": "fulfilment",
+          "title": "Tickets minted",
+          "note": "Barcode, PDF and wallet pass generated, then <b>ticket.issued</b> goes back on the bus."
+        },
+        {
+          "from": "bus",
+          "to": "notify",
+          "title": "Message queued",
+          "note": "Same event, different consumer. Notifier does not know or care that fulfilment exists."
+        },
+        {
+          "from": "notify",
+          "to": "comms",
+          "title": "Delivered",
+          "note": "Email with the pass attached, SMS with the door time. The buyer sees a confirmation about <b>1.4s</b> after they clicked."
+        }
+      ]
+    },
+    {
+      "id": "expire",
+      "name": "A hold lapses",
+      "level": "containers",
+      "meta": "3 cues · the timer wins",
+      "cues": [
+        {
+          "from": "inventory",
+          "to": "holds",
+          "title": "TTL runs out",
+          "note": "Eight minutes with no checkout. Redis expires the seat key on its own — no cleanup job, no cron."
+        },
+        {
+          "from": "inventory",
+          "to": "bus",
+          "title": "Seats released",
+          "note": "<b>hold.expired</b> is published. The seat map goes green again for everyone watching."
+        },
+        {
+          "from": "bus",
+          "to": "notify",
+          "title": "Buyer told",
+          "note": "\"Your seats were released.\" Sent once per session, not once per seat."
+        }
+      ]
+    },
+    {
+      "id": "saga",
+      "name": "Inside the checkout",
+      "level": "orders.components",
+      "meta": "7 cues · one container",
+      "cues": [
+        {
+          "from": "ctrl",
+          "to": "idem",
+          "title": "Claim the key",
+          "note": "First request to claim this <b>Idempotency-Key</b> proceeds. A replay gets the stored response and stops here."
+        },
+        {
+          "from": "ctrl",
+          "to": "saga",
+          "title": "Saga starts",
+          "note": "The controller is done. Everything after this is orchestration."
+        },
+        {
+          "from": "saga",
+          "to": "pricing",
+          "title": "Price it",
+          "note": "Band, booking fee, promoter rebate, VAT. Pure functions, no I/O."
+        },
+        {
+          "from": "saga",
+          "to": "invclient",
+          "title": "Confirm the hold",
+          "note": "Step 1 of 3 that can fail. Compensation: none needed yet."
+        },
+        {
+          "from": "saga",
+          "to": "payclient",
+          "title": "Take the money",
+          "note": "Step 2. If this fails, the saga releases the hold and returns <b>402</b>."
+        },
+        {
+          "from": "saga",
+          "to": "repo",
+          "title": "Persist",
+          "note": "Step 3. If this fails after a successful charge, the saga refunds and alerts — the only path that pages a human."
+        },
+        {
+          "from": "repo",
+          "to": "pub",
+          "title": "Hand to the outbox",
+          "note": "The event is already committed. Publishing is now somebody else's problem, which is the point."
+        }
+      ]
+    },
+    {
+      "id": "scan",
+      "name": "Scan at the gate",
+      "level": "containers",
+      "meta": "4 cues · offline-tolerant",
+      "cues": [
+        {
+          "from": "gateapp",
+          "to": "edge",
+          "title": "Barcode replayed",
+          "note": "Scans batched on the handheld while the venue wifi was down, sent in scan order."
+        },
+        {
+          "from": "edge",
+          "to": "scanapi",
+          "title": "Routed to the gate API",
+          "note": "Higher rate limit for venue IPs — doors open faster than they buy."
+        },
+        {
+          "from": "scanapi",
+          "to": "orders",
+          "title": "Ticket looked up",
+          "note": "Valid, refunded, or already scanned. Second scan of the same barcode returns <b>409</b>."
+        },
+        {
+          "from": "scanapi",
+          "to": "bus",
+          "title": "Attendance recorded",
+          "note": "<b>ticket.scanned</b> feeds the promoter's live door count."
+        }
+      ]
+    }
+  ]
+}
