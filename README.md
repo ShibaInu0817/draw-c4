@@ -17,7 +17,7 @@ Everything lives in one HTML file you can open in any browser, commit, or share.
 ## Install
 
 ```bash
-npx skills@latest add ShibaInu0817/draw-c4 -g
+npx skills@latest add ShibaInu0817/draw-c4-skill -g
 ```
 
 <details>
@@ -27,8 +27,8 @@ npx skills@latest add ShibaInu0817/draw-c4 -g
 `/draw-c4:draw-c4`.
 
 ```
-/plugin marketplace add ShibaInu0817/draw-c4
-/plugin install draw-c4@shibainu0817-plugins
+/plugin marketplace add ShibaInu0817/draw-c4-skill
+/plugin install draw-c4@draw-c4-skill
 ```
 
 **By hand** — copy the folder into your skills directory.

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "shibainu0817-plugins",
+  "name": "draw-c4-skill",
   "owner": { "name": "Tee TX" },
   "description": "Interactive C4-style architecture diagrams generated from source code.",
   "plugins": [
