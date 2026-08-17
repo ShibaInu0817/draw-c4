@@ -9,24 +9,51 @@ Turns a codebase into an explorable diagram: a single HTML file with no build st
 and no dependencies, holding up to four levels of detail and a set of animated
 runtime flows.
 
+## Find the skill directory first
+
+**Do this once, before any other step.** This skill's files sit wherever it was
+installed, which is never the user's working directory. Resolve that location and
+use absolute paths from then on — bare relative paths like `scripts/plot.py` will
+not resolve:
+
+```bash
+SKILL="$(dirname "$(dirname "$(find "${CLAUDE_PLUGIN_ROOT:-/nonexistent}" \
+  ~/.claude/skills ~/.agents/skills "$PWD/.claude/skills" \
+  -name plot.py -path '*draw-c4*' 2>/dev/null | head -1)")")"
+```
+
+That covers every install route — plugin, `npx skills`, and a hand-copied skill
+folder at user or project level. Sanity-check it resolved:
+
+```bash
+ls "$SKILL/scripts/plot.py" "$SKILL/assets/plot-template.html"
+```
+
+Every command below writes `"$SKILL"` for that directory. Keep the quotes; the
+path can contain spaces. Read the bundled reference files by absolute path too —
+`$SKILL/references/model-schema.md`, `$SKILL/assets/example-model.json`.
+
+The model file and the output HTML are the user's, so those stay wherever the
+user wants them, normally the repo being diagrammed. Never write into `$SKILL`.
+
+Read `$SKILL/references/model-schema.md` for every field. Read
+`$SKILL/assets/example-model.json` before writing a model — it is a complete,
+hand-tuned example and imitating its level of specificity is most of the job.
+
 ## How the pieces fit
 
 The output file is two things welded together:
 
-- **The renderer** — `assets/plot-template.html`, about 700 lines of HTML, CSS and
+- **The renderer** — `$SKILL/assets/plot-template.html`, about 700 lines of HTML, CSS and
   JS. It is fixed. It handles layout transforms, hit testing, the inspector, the
   flow player, keyboard shortcuts. Never edit it and never write it out by hand.
 - **The model** — one JSON object describing the system: levels, nodes, edges,
   flows. This is the only thing that varies between diagrams, and it is the only
   thing to write.
 
-`scripts/plot.py` moves the model in and out of the HTML. Because the model
+`$SKILL/scripts/plot.py` moves the model in and out of the HTML. Because the model
 round-trips exactly, an existing diagram can be read back, edited as data, and
 rebuilt — which is what makes updating cheap.
-
-Read `references/model-schema.md` for every field. Read
-`assets/example-model.json` before writing a model — it is a complete, hand-tuned
-example and imitating its level of specificity is most of the job.
 
 ## Workflow: a new diagram
 
@@ -34,30 +61,36 @@ example and imitating its level of specificity is most of the job.
    not start from the README's architecture section alone; it is usually stale.
 2. **Write the model** to `model.json`. Omit `x`/`y` — the layout step supplies
    them.
-3. **Lay it out:** `python3 scripts/plot.py layout model.json --all`
-4. **Check it:** `python3 scripts/plot.py check model.json` — fix everything it
-   reports before moving on. It catches the mistakes that are easy to make and
+3. **Lay it out:** `python3 "$SKILL/scripts/plot.py" layout model.json --all`
+4. **Check it:** `python3 "$SKILL/scripts/plot.py" check model.json` — clear every **error**
+   before moving on. It catches the mistakes that are easy to make and
    invisible afterwards: an edge pointing at a node id that does not exist, a
    flow cue with no matching edge, a drill target that was renamed.
+   **Warnings need judgement, not blind obedience.** A `jump` warning on an
+   orchestrator that fans out is expected and correct — see "Keep the cues
+   contiguous". Do not invent a hop that the code does not make just to silence
+   `check`; a wrong diagram that validates cleanly is worse than a right one that
+   warns. The shipped `$SKILL/assets/example-model.json` emits two such warnings by
+   design.
 5. **Tune the placement.** Auto-layout guarantees nothing overlaps; it does not
    guarantee the diagram reads well. Nudge coordinates so the shape of the
    picture matches the shape of the system — clients on the left, stores beside
    the service that owns them, the event bus spanning its consumers. Compare
-   against `assets/example-model.json`, which is hand-placed. Re-run `check`
+   against `$SKILL/assets/example-model.json`, which is hand-placed. Re-run `check`
    after nudging.
-6. **Build:** `python3 scripts/plot.py build model.json architecture.html`
+6. **Build:** `python3 "$SKILL/scripts/plot.py" build model.json architecture.html`
 7. Keep `model.json` next to the HTML and tell the user to keep it — it is the
    source, and the next update starts from it.
 
 ## Workflow: updating an existing diagram
 
-1. `python3 scripts/plot.py extract architecture.html model.json` (skip if the
+1. `python3 "$SKILL/scripts/plot.py" extract architecture.html model.json` (skip if the
    model file was kept).
 2. Re-read the parts of the code that changed. Diff mentally against the model:
    what is new, what is gone, what was renamed, what changed direction.
 3. Edit the JSON. When something is deleted, delete its edges and any flow cues
    that used them too — `check` will otherwise report them, which is the point.
-4. `python3 scripts/plot.py layout model.json` — with no `--all`, this keeps
+4. `python3 "$SKILL/scripts/plot.py" layout model.json` — with no `--all`, this keeps
    every existing coordinate and parks only the new parts in a spare column on
    the right. Move them into place deliberately; do not leave them stacked.
 5. `check`, then `build`.
@@ -186,11 +219,11 @@ continue-as-new. If the workflow node only says what it *is* and never what it
 ## Commands
 
 ```bash
-python3 scripts/plot.py build   model.json diagram.html   # model -> HTML
-python3 scripts/plot.py extract diagram.html model.json   # HTML -> model
-python3 scripts/plot.py check   model.json                # validate; exits 1 on error
-python3 scripts/plot.py layout  model.json [--level ID] [--all]
-python3 scripts/plot.py stats   model.json                # what's in there
+python3 "$SKILL/scripts/plot.py" build   model.json diagram.html   # model -> HTML
+python3 "$SKILL/scripts/plot.py" extract diagram.html model.json   # HTML -> model
+python3 "$SKILL/scripts/plot.py" check   model.json                # validate; exits 1 on error
+python3 "$SKILL/scripts/plot.py" layout  model.json [--level ID] [--all]
+python3 "$SKILL/scripts/plot.py" stats   model.json                # what's in there
 ```
 
 `build` refuses to run when `check` finds errors. `--force` overrides, but a

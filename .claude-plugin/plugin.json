@@ -3,7 +3,7 @@
   "name": "draw-c4",
   "version": "0.1.0",
   "description": "Generate or update an interactive, self-contained C4-style architecture diagram (single HTML file) from a codebase.",
-  "author": { "name": "TODO-AUTHOR" },
+  "author": { "name": "Tee TX" },
   "license": "MIT",
   "keywords": ["c4", "architecture", "diagram", "codebase", "visualization"]
 }

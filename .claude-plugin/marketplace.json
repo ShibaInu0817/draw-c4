@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "tee-plugins",
-  "owner": { "name": "TODO-AUTHOR" },
+  "name": "shibainu0817-plugins",
+  "owner": { "name": "Tee TX" },
   "description": "Interactive C4-style architecture diagrams generated from source code.",
   "plugins": [
     {

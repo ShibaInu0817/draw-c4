@@ -1,8 +1,7 @@
 # draw-c4
 
-A [Claude Code](https://code.claude.com) **Skill** (packaged as an installable plugin) that turns a
-codebase into an **interactive, C4-style architecture diagram** — a single self-contained HTML file
-with no build step and no dependencies.
+A [Claude Code](https://code.claude.com) skill that turns a codebase into an **interactive, C4-style
+architecture diagram** — a single self-contained HTML file with no build step and no dependencies.
 
 The output has:
 
@@ -15,43 +14,46 @@ Everything lives in one HTML file you can open in any browser, commit, or share.
 
 ---
 
-## Before you publish (repo owner checklist)
-
-This repo ships with placeholders. Replace them before you push it public:
-
-1. `TODO-AUTHOR` → your name or GitHub handle, in:
-   - [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) (`owner.name`)
-   - [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) (`author.name`)
-   - [`LICENSE`](LICENSE) (copyright line)
-2. `<github-owner>` → your GitHub owner/repo in the install command below.
-
----
-
 ## Install
 
-### As a plugin (recommended)
-
-In a Claude Code session:
-
-```
-/plugin marketplace add <github-owner>/draw-c4
-/plugin install draw-c4@tee-plugins
+```bash
+npx skills@latest add ShibaInu0817/draw-c4 -g
 ```
 
-The skill loads automatically and Claude invokes it whenever you ask it to diagram, map, or visualise
-a codebase.
+<details>
+<summary>Other ways to install</summary>
 
-### Manually (no plugin)
+**As a Claude Code plugin** — updates arrive automatically when a new version ships. The command is
+`/draw-c4:draw-c4`.
 
-Copy the skill folder into your skills directory:
+```
+/plugin marketplace add ShibaInu0817/draw-c4
+/plugin install draw-c4@shibainu0817-plugins
+```
+
+**By hand** — copy the folder into your skills directory.
 
 ```bash
-# user-level (available in every project)
-cp -R skills/draw-c4 ~/.claude/skills/
-
-# or project-level
-cp -R skills/draw-c4 /path/to/your/project/.claude/skills/
+cp -R skills/draw-c4 ~/.claude/skills/                        # every project
+cp -R skills/draw-c4 /path/to/your/project/.claude/skills/    # just this one
 ```
+
+</details>
+
+## Use
+
+Ask for a diagram in whatever words come naturally:
+
+> diagram this codebase
+>
+> how does a request flow through this?
+>
+> the architecture changed — refresh the diagram
+
+Or invoke it directly with `/draw-c4`.
+
+You get `architecture.html` — open it in a browser — and `model.json` beside it. Keep the JSON: it is
+the source the next update starts from.
 
 ---
 
@@ -63,6 +65,9 @@ cp -R skills/draw-c4 /path/to/your/project/.claude/skills/
 
 ## How it works
 
+You do not need any of this to use the skill — Claude drives it for you. It matters if you want to
+edit a diagram by hand or contribute.
+
 The diagram is two things welded into one HTML file:
 
 - **The renderer** — [`skills/draw-c4/assets/plot-template.html`](skills/draw-c4/assets/plot-template.html),
@@ -72,6 +77,8 @@ The diagram is two things welded into one HTML file:
 
 [`skills/draw-c4/scripts/plot.py`](skills/draw-c4/scripts/plot.py) moves the model in and out of the HTML,
 so an existing diagram can be read back, edited as data, and rebuilt:
+
+From a clone of this repo:
 
 ```bash
 cd skills/draw-c4
@@ -88,6 +95,9 @@ python3 scripts/plot.py layout model.json            # keep coords, park new nod
 python3 scripts/plot.py check  model.json
 python3 scripts/plot.py build  model.json architecture.html
 ```
+
+Installed rather than cloned, the scripts live in your skills directory — point `python3` at the
+absolute path instead of `cd`-ing.
 
 - [`skills/draw-c4/references/model-schema.md`](skills/draw-c4/references/model-schema.md) documents every
   model field.
