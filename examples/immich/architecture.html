@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture Plot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --backdrop:#17141C;
+    --deep:#1E1A26;
+    --panel:#221D2C;
+    --rule:#332C40;
+    --rule-soft:#2A2434;
+
+    --chalk:#EDE7DC;
+    --chalk-dim:#9A92A8;
+    --chalk-faint:#6A6379;
+
+    --gel-rose:#E8748E;
+    --gel-amber:#F2A65A;
+    --gel-teal:#5FC9C2;
+    --gel-lav:#9E8BE8;
+    --gel-ext:#7B7388;
+
+    --font-display:"Barlow Condensed", "Arial Narrow", sans-serif;
+    --font-ui:"Barlow", system-ui, sans-serif;
+    --font-mono:"IBM Plex Mono", ui-monospace, monospace;
+
+    --rail:236px;
+    --inspector:320px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--backdrop);
+    color:var(--chalk);
+    font-family:var(--font-ui);
+    font-size:14px;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
+  ::selection{background:var(--gel-amber);color:var(--backdrop);}
+  :focus-visible{outline:2px solid var(--gel-amber);outline-offset:2px;}
+
+  /* ---------- shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:var(--rail) 1fr var(--inspector);
+    grid-template-rows:56px 1fr;
+    grid-template-areas:"top top top" "rail stage inspector";
+    height:100dvh;
+  }
+
+  /* ---------- top bar ---------- */
+  .top{
+    grid-area:top;
+    display:flex;align-items:center;gap:18px;
+    padding:0 16px;
+    border-bottom:1px solid var(--rule);
+    background:var(--deep);
+  }
+  .mark{display:flex;align-items:baseline;gap:8px;flex:none;}
+  .mark b{
+    font-family:var(--font-display);
+    font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    font-size:19px;
+  }
+  .mark span{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+    color:var(--chalk-faint);text-transform:uppercase;
+  }
+
+  .crumbs{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;}
+  .crumb{
+    font-family:var(--font-display);font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;font-size:13px;color:var(--chalk-dim);
+    padding:4px 9px;border-radius:2px;white-space:nowrap;
+  }
+  .crumb:hover{color:var(--chalk);background:var(--panel);}
+  .crumb.here{color:var(--backdrop);background:var(--chalk);}
+  .crumb-sep{color:var(--chalk-faint);font-family:var(--font-mono);font-size:11px;}
+
+  .spacer{flex:1;}
+  .find{
+    position:relative;flex:none;
+  }
+  .find input{
+    width:180px;background:var(--panel);border:1px solid var(--rule);
+    color:var(--chalk);font-family:var(--font-mono);font-size:11px;
+    padding:7px 10px 7px 26px;border-radius:2px;
+  }
+  .find input::placeholder{color:var(--chalk-faint);}
+  .find input:focus{border-color:var(--gel-amber);outline:none;}
+  .find::before{
+    content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-50%);
+    color:var(--chalk-faint);font-size:13px;pointer-events:none;
+  }
+
+  /* ---------- left rail ---------- */
+  .rail{
+    grid-area:rail;
+    border-right:1px solid var(--rule);
+    background:var(--deep);
+    overflow-y:auto;
+    display:flex;flex-direction:column;
+  }
+  .rail-block{padding:16px;border-bottom:1px solid var(--rule-soft);}
+  .rail-block:last-child{border-bottom:none;}
+  .eyebrow{
+    font-family:var(--font-display);font-weight:700;
+    letter-spacing:.16em;text-transform:uppercase;font-size:11px;
+    color:var(--chalk-faint);margin:0 0 12px;
+  }
+
+  .flow-btn{
+    display:block;width:100%;text-align:left;
+    padding:9px 10px;margin-bottom:4px;border-radius:2px;
+    border-left:2px solid transparent;
+    line-height:1.25;
+  }
+  .flow-btn:hover{background:var(--panel);}
+  .flow-btn.on{background:var(--panel);border-left-color:var(--gel-amber);}
+  .flow-btn .fn{display:block;font-weight:600;font-size:13px;}
+  .flow-btn.on .fn{color:var(--gel-amber);}
+  .flow-btn .fm{
+    display:block;
+    font-family:var(--font-mono);font-size:10px;color:var(--chalk-faint);
+    letter-spacing:.04em;margin-top:2px;
+  }
+
+  .key-row{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-size:12px;color:var(--chalk-dim);}
+  .swatch{width:14px;height:14px;border-radius:2px;border:1.5px solid;flex:none;}
+
+  .toggle{
+    display:flex;align-items:center;gap:9px;width:100%;
+    font-size:12px;color:var(--chalk-dim);padding:5px 0;
+  }
+  .toggle:hover{color:var(--chalk);}
+  .box{
+    width:14px;height:14px;border:1.5px solid var(--rule);border-radius:2px;flex:none;
+    display:grid;place-items:center;font-size:10px;color:var(--backdrop);
+  }
+  .toggle.on .box{background:var(--gel-amber);border-color:var(--gel-amber);}
+  .toggle.on{color:var(--chalk);}
+
+  /* ---------- stage ---------- */
+  .stage{
+    grid-area:stage;position:relative;overflow:hidden;background:var(--backdrop);
+  }
+  #plot{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}
+  #plot.dragging{cursor:grabbing;}
+
+  .stage-hint{
+    position:absolute;left:14px;bottom:12px;pointer-events:none;
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.03em;
+    color:var(--chalk-faint);
+  }
+  .zoomer{
+    position:absolute;right:14px;bottom:12px;display:flex;flex-direction:column;
+    border:1px solid var(--rule);border-radius:2px;overflow:hidden;background:var(--deep);
+  }
+  .zoomer button{
+    width:30px;height:28px;color:var(--chalk-dim);font-size:14px;line-height:1;
+    border-bottom:1px solid var(--rule);
+  }
+  .zoomer button:last-child{border-bottom:none;font-size:9px;font-family:var(--font-display);letter-spacing:.08em;}
+  .zoomer button:hover{background:var(--panel);color:var(--chalk);}
+
+  /* svg node/edge styling */
+  .n-box{stroke-width:1.5;fill:var(--deep);transition:fill .12s,stroke .12s;}
+  .node{cursor:pointer;}
+  .node .n-name{font-family:var(--font-display);font-weight:600;font-size:16px;letter-spacing:.02em;fill:var(--chalk);}
+  .node .n-kind{font-family:var(--font-display);font-weight:700;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;}
+  .node .n-tech{font-family:var(--font-mono);font-size:9.5px;fill:var(--chalk-faint);letter-spacing:.02em;}
+  .node.dim{opacity:.22;}
+  .node.hit .n-box{fill:var(--panel);}
+  .node.sel .n-box{stroke-width:2.5;}
+  .drill-tag{font-family:var(--font-mono);font-size:9px;fill:var(--chalk-faint);letter-spacing:.08em;}
+  .node:hover .drill-tag{fill:var(--gel-amber);}
+
+  .edge{fill:none;stroke:var(--rule);stroke-width:1.4;}
+  .edge.async{stroke-dasharray:5 4;}
+  .edge.lit{stroke:var(--chalk-dim);stroke-width:1.8;}
+  .edge.hot{stroke:var(--gel-amber);stroke-width:2.6;}
+  .edge.faded{opacity:.18;}
+  .e-label{font-family:var(--font-mono);font-size:9.5px;fill:var(--chalk-dim);letter-spacing:.01em;}
+  .e-label-bg{fill:var(--backdrop);}
+  .pulse{fill:var(--gel-amber);}
+  .grid-dot{fill:#2C2637;}
+
+  /* ---------- inspector ---------- */
+  .inspector{
+    grid-area:inspector;border-left:1px solid var(--rule);background:var(--deep);
+    overflow-y:auto;padding:18px 18px 40px;
+  }
+  .ins-kind{
+    font-family:var(--font-display);font-weight:700;letter-spacing:.16em;
+    text-transform:uppercase;font-size:10px;margin-bottom:6px;
+  }
+  .ins-name{
+    font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.05;
+    letter-spacing:.01em;margin:0 0 6px;
+  }
+  .ins-tech{font-family:var(--font-mono);font-size:11px;color:var(--chalk-dim);margin-bottom:16px;}
+  .ins-desc{font-size:13.5px;line-height:1.55;color:var(--chalk-dim);margin-bottom:20px;}
+  .ins-desc strong{color:var(--chalk);font-weight:600;}
+  .ins-sec{margin-top:18px;}
+  .link-row{
+    display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;
+    padding:7px 0;border-bottom:1px solid var(--rule-soft);
+  }
+  .link-row:hover .lr-name{color:var(--gel-amber);}
+  .lr-arrow{font-family:var(--font-mono);font-size:10px;color:var(--chalk-faint);flex:none;}
+  .lr-name{font-weight:600;font-size:13px;}
+  .lr-note{font-family:var(--font-mono);font-size:10px;color:var(--chalk-faint);display:block;margin-top:2px;}
+  .drill-btn{
+    display:block;width:100%;margin-top:18px;padding:11px;
+    border:1px solid var(--gel-amber);color:var(--gel-amber);border-radius:2px;
+    font-family:var(--font-display);font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;font-size:12px;text-align:center;
+  }
+  .drill-btn:hover{background:var(--gel-amber);color:var(--backdrop);}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule-soft);border:1px solid var(--rule-soft);margin-bottom:18px;}
+  .stat{background:var(--deep);padding:11px 12px;}
+  .stat b{display:block;font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1;}
+  .stat span{font-family:var(--font-mono);font-size:9.5px;color:var(--chalk-faint);letter-spacing:.06em;text-transform:uppercase;}
+
+  /* ---------- cue sheet ---------- */
+  .cuesheet{
+    position:absolute;left:0;right:0;bottom:0;
+    background:linear-gradient(to top, var(--deep) 78%, rgba(30,26,38,0));
+    border-top:1px solid var(--rule);
+    padding:10px 14px 12px;
+    transform:translateY(110%);transition:transform .25s ease;
+  }
+  .cuesheet.up{transform:translateY(0);}
+  .cue-head{display:flex;align-items:center;gap:12px;margin-bottom:9px;}
+  .cue-title{font-family:var(--font-display);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:13px;}
+  .cue-note{font-size:12.5px;color:var(--chalk-dim);flex:1;min-width:0;}
+  .cue-note b{color:var(--gel-amber);font-family:var(--font-mono);font-size:11px;font-weight:500;}
+  .transport{display:flex;gap:2px;flex:none;}
+  .transport button{
+    width:30px;height:26px;border:1px solid var(--rule);color:var(--chalk-dim);
+    display:grid;place-items:center;font-size:11px;
+  }
+  .transport button:hover{background:var(--panel);color:var(--chalk);}
+  .transport button.x{color:var(--chalk-faint);}
+  .cue-track{display:flex;gap:3px;}
+  .cue{
+    flex:1;min-width:0;padding:7px 8px;border-top:2px solid var(--rule);
+    text-align:left;color:var(--chalk-faint);
+  }
+  .cue:hover{border-top-color:var(--chalk-dim);color:var(--chalk-dim);}
+  .cue.done{border-top-color:var(--chalk-faint);}
+  .cue.now{border-top-color:var(--gel-amber);color:var(--gel-amber);background:var(--panel);}
+  .cue .cn{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;display:block;}
+  .cue .ct{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;margin-top:2px;}
+
+  /* ---------- responsive ---------- */
+  .panel-toggles{display:none;gap:2px;}
+  .panel-toggles button{
+    border:1px solid var(--rule);padding:5px 9px;border-radius:2px;
+    font-family:var(--font-display);font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;font-size:11px;color:var(--chalk-dim);
+  }
+  .panel-toggles button.on{background:var(--panel);color:var(--chalk);}
+
+  @media (max-width:1080px){
+    .shell{grid-template-columns:1fr;grid-template-areas:"top" "stage";}
+    .rail,.inspector{
+      position:fixed;top:56px;bottom:0;width:min(300px,86vw);z-index:20;
+      box-shadow:0 0 40px rgba(0,0,0,.55);
+    }
+    .rail{left:0;transform:translateX(-105%);transition:transform .2s;}
+    .inspector{right:0;transform:translateX(105%);transition:transform .2s;}
+    .rail.open,.inspector.open{transform:translateX(0);}
+    .panel-toggles{display:flex;}
+    .find input{width:110px;}
+    .mark span{display:none;}
+  }
+  @media (max-width:560px){
+    .crumbs{display:none;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition-duration:.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="top">
+    <div class="mark"><b id="mark-name">—</b><span id="mark-tag"></span></div>
+    <nav class="crumbs" id="crumbs"></nav>
+    <div class="spacer"></div>
+    <div class="panel-toggles">
+      <button id="tgl-rail">Flows</button>
+      <button id="tgl-ins">Detail</button>
+    </div>
+    <div class="find"><input id="find" type="search" placeholder="find a part…" autocomplete="off" spellcheck="false"></div>
+  </header>
+
+  <aside class="rail" id="rail">
+    <div class="rail-block">
+      <p class="eyebrow">Runtime flows</p>
+      <div id="flow-list"></div>
+    </div>
+    <div class="rail-block">
+      <p class="eyebrow">Plot key</p>
+      <div id="key"></div>
+    </div>
+    <div class="rail-block">
+      <p class="eyebrow">Display</p>
+      <button class="toggle" id="tgl-labels"><span class="box">✓</span>Label every line</button>
+      <button class="toggle" id="tgl-grid"><span class="box">✓</span>Show the grid</button>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <svg id="plot" xmlns="http://www.w3.org/2000/svg"></svg>
+    <p class="stage-hint">drag to pan · scroll to zoom · double-click a part to go deeper</p>
+    <div class="zoomer">
+      <button id="z-in" title="Zoom in">+</button>
+      <button id="z-out" title="Zoom out">−</button>
+      <button id="z-fit" title="Fit to view">FIT</button>
+    </div>
+    <div class="cuesheet" id="cuesheet"></div>
+  </main>
+
+  <aside class="inspector" id="inspector"></aside>
+</div>
+
+<script>
+/* =========================================================================
+   THE MODEL
+   Everything the plot draws comes from this one object. Swap it for your own
+   system: give each level a canvas size, a list of nodes with x/y, and edges
+   that reference node ids. `drill` points a node at a deeper level.
+   ========================================================================= */
+/* @@MODEL_START@@  ——  written by scripts/plot.py, do not hand-edit this block */
+const MODEL = {"name":"Immich","tagline":"self-hosted photo & video backup","entry":"containers","levels":{"context":{"id":"context","name":"Context","label":"Immich in the world","blurb":"Who uses a self-hosted Immich instance, and the few outside services it reaches for. Almost nothing leaves the box — that is the point of the product.","canvas":{"w":1070,"h":678},"nodes":[{"id":"owner","name":"Photo owner","kind":"person","tech":"phone + browser","desc":"Backs up a camera roll, then expects to find a photo by describing it months later. Never has to hand the library to anyone else's cloud.","x":60,"y":180},{"id":"admin","name":"Administrator","kind":"person","tech":"admin console","desc":"Runs the box. Pauses queues, re-runs jobs over the whole library, swaps the CLIP model, and watches disk fill up.","x":60,"y":400},{"id":"immich","name":"Immich","kind":"focus","tech":"the system in question","w":280,"h":130,"drill":"containers","desc":"Stores originals on your own disk, derives thumbnails and embeddings from them, and serves a timeline, a map, people and search over the result.","x":380,"y":250},{"id":"library","name":"External library","kind":"external","tech":"read-only mount","desc":"A folder of existing photos Immich indexes in place and never moves. Watched with a filesystem watcher plus a nightly scan.","x":800,"y":60},{"id":"oidc","name":"OIDC provider","kind":"external","tech":"OpenID Connect","desc":"Optional single sign-on — Authelia, Keycloak, Authentik. Immich does discovery against the issuer and runs a PKCE authorization-code grant.","x":800,"y":180},{"id":"smtp","name":"SMTP server","kind":"external","tech":"nodemailer","desc":"Album invitations, welcome mail, password resets. The only outbound channel to a human who is not already logged in.","x":800,"y":300},{"id":"hf","name":"Hugging Face Hub","kind":"external","tech":"ONNX model files","desc":"Where models are fetched from on first use. After the first download the box works with no internet at all.","x":800,"y":420},{"id":"gh","name":"GitHub releases","kind":"external","tech":"version feed","desc":"Checked on a schedule so the admin console can say a newer version exists. Switchable off, and the only telemetry-shaped call in the system.","x":800,"y":540}],"edges":[{"from":"owner","to":"immich","label":"uploads, browses, searches"},{"from":"admin","to":"immich","label":"runs jobs, tunes models"},{"from":"immich","to":"library","label":"indexes in place, watches for changes","kind":"async"},{"from":"immich","to":"oidc","label":"discovery + authorization code"},{"from":"immich","to":"smtp","label":"album invites, resets","kind":"async"},{"from":"immich","to":"hf","label":"downloads ONNX models once"},{"from":"immich","to":"gh","label":"scheduled version check","kind":"async"}]},"containers":{"id":"containers","name":"Containers","label":"Inside Immich","parent":"context","blurb":"Four containers in the compose file, but five things that run: the API and the job worker are separate Node workers that ship inside one image. Dashed lines are asynchronous.","canvas":{"w":1250,"h":958},"nodes":[{"id":"mobile","name":"Mobile app","kind":"client","tech":"Flutter · Dart","desc":"Does the actual backing up. Uploads in the background, tracks what it has already sent locally, and holds a websocket open so the timeline updates without a refresh.","x":60,"y":110},{"id":"web","name":"Web app","kind":"client","tech":"SvelteKit · served by the API","desc":"There is no web container. The API worker serves the built SvelteKit app itself as its fallback route, so the browser and the REST API share one origin.","x":60,"y":240},{"id":"cli","name":"CLI","kind":"client","tech":"@immich/cli · npm","desc":"Bulk upload from a shell. Hits the same public REST endpoints as the apps, generated from the same OpenAPI schema.","x":60,"y":370},{"id":"api","name":"API worker","kind":"service","tech":"NestJS · Express · Kysely","desc":"Answers every HTTP request, serves the web app, and owns the cron schedule. It never runs a background job — it only enqueues them.","x":400,"y":240},{"id":"micro","name":"Job worker","kind":"service","tech":"BullMQ · 18 queues","drill":"jobs.components","desc":"The 'microservices' worker. Same image and same code as the API, started as a second Node worker; IMMICH_WORKERS_EXCLUDE is all it takes to move it to another machine.","w":230,"x":400,"y":600},{"id":"ml","name":"Machine learning","kind":"service","tech":"FastAPI · ONNX Runtime","drill":"ml.components","desc":"Stateless inference over HTTP. It has no database credentials and no media volume — every request carries the image bytes and the model settings with it.","x":740,"y":700},{"id":"redis","name":"Redis","kind":"queue","tech":"Valkey 9 · BullMQ + socket.io","w":540,"h":70,"desc":"Two jobs in one. It is the job queue, and it is also the socket.io pub/sub backplane — which is how work finished in the job worker reaches a browser attached to the API worker.","x":340,"y":430},{"id":"db","name":"Postgres","kind":"store","tech":"PG 14 · VectorChord + pgvector","desc":"Everything durable, including both vector indexes and the offline place-name table. Also the coordination primitive: advisory locks decide which instance owns the cron schedule.","x":980,"y":560},{"id":"files","name":"Media store","kind":"store","tech":"filesystem · UPLOAD_LOCATION","desc":"Originals, thumbnails, transcoded video, profile images and backups under one mount. Originals are written once and then only ever read.","x":980,"y":430},{"id":"oidc","name":"OIDC provider","kind":"external","tech":"OpenID Connect","desc":"Optional. Only the API worker talks to it.","x":400,"y":60},{"id":"smtp","name":"SMTP server","kind":"external","tech":"mail relay","desc":"Reached from the notifications queue, never from a request thread.","x":980,"y":700},{"id":"gh","name":"GitHub releases","kind":"external","tech":"version feed","desc":"Polled by a scheduled job, not by the API.","x":980,"y":820}],"edges":[{"from":"mobile","to":"api","label":"REST /api · multipart upload"},{"from":"web","to":"api","label":"REST /api + app shell"},{"from":"cli","to":"api","label":"POST /api/assets"},{"from":"api","to":"files","label":"writes the original"},{"from":"api","to":"db","label":"Kysely SQL"},{"from":"api","to":"redis","label":"queue.add(job)"},{"from":"api","to":"ml","label":"POST /predict · CLIP text"},{"from":"api","to":"oidc","label":"discovery + code grant"},{"from":"redis","to":"micro","label":"BullMQ job delivery","kind":"async"},{"from":"micro","to":"files","label":"reads originals, writes derivatives"},{"from":"micro","to":"db","label":"Kysely SQL + vector upsert"},{"from":"micro","to":"ml","label":"POST /predict · image bytes"},{"from":"micro","to":"redis","label":"follow-up jobs + client events","kind":"async"},{"from":"micro","to":"smtp","label":"notifications queue","kind":"async"},{"from":"micro","to":"gh","label":"GET latest release","kind":"async"},{"from":"redis","to":"api","label":"socket.io adapter · pub/sub","kind":"async"},{"from":"api","to":"mobile","label":"on_upload_success","kind":"async"},{"from":"api","to":"web","label":"AssetUploadReadyV2","kind":"async"}]},"jobs.components":{"id":"jobs.components","name":"Job worker","label":"Inside the job worker","parent":"containers","blurb":"One BullMQ worker per queue, and one service that decides what happens next. Nothing to the right of the divide lives in this process.","canvas":{"w":1510,"h":798},"nodes":[{"id":"bull","name":"BullMQ workers","kind":"component","tech":"one Worker per queue","desc":"Eighteen workers, all constructed with concurrency 1 and then re-set at runtime from system config. Changing thumbnail concurrency in the admin UI needs no restart.","x":145,"y":210},{"id":"jobsvc","name":"JobService","kind":"component","tech":"orchestrator · onDone","desc":"The whole pipeline is here, and only here. Each handler returns a status and JobService decides what to enqueue next — the services themselves do not know the order.","x":145,"y":400},{"id":"metadata","name":"MetadataService","kind":"component","tech":"exiftool · geodata","desc":"Reads exif, then resolves the coordinates to a place name against a table in Postgres. No geocoding API is ever called.","x":620,"y":60},{"id":"template","name":"StorageTemplateService","kind":"component","tech":"path template","desc":"Renames the original into the user's configured folder template. Only continues the chain when the asset arrived by upload or copy.","x":620,"y":180},{"id":"media","name":"MediaService","kind":"component","tech":"sharp · ffmpeg","desc":"Thumbnails, previews and the transcoded video. This is the gate — nothing downstream can run until an asset has a preview image to look at.","x":620,"y":300},{"id":"smart","name":"SmartInfoService","kind":"component","tech":"CLIP embedding","desc":"Turns the preview into a vector. Re-checks the configured model name after inference and throws the result away if an admin changed it mid-flight.","x":620,"y":420},{"id":"person","name":"PersonService","kind":"component","tech":"detect + recognise","desc":"Two separate queues. Detection finds boxes and embeddings; recognition clusters one face at a time against everything already known.","x":620,"y":540},{"id":"ocr","name":"OcrService","kind":"component","tech":"text in images","desc":"Pulls readable text out of the preview so screenshots and signs become searchable.","x":620,"y":660},{"id":"mlrepo","name":"MachineLearningRepo","kind":"component","tech":"health-ordered fan-out","desc":"Pings every configured ML url on a timer and tries the healthy ones first, then the unhealthy ones anyway. It only fails when every url has failed.","x":950,"y":660},{"id":"x-redis","name":"Redis","kind":"queue","tech":"BullMQ","w":400,"h":70,"desc":"Shared queue.","x":60,"y":60},{"id":"x-db","name":"Postgres","kind":"store","tech":"vchordrq indexes","desc":"Shared database.","x":950,"y":420},{"id":"x-files","name":"Media store","kind":"store","tech":"filesystem","desc":"Shared mount.","x":950,"y":180},{"id":"x-ml","name":"Machine learning","kind":"external","tech":"container boundary","desc":"Another container.","x":1240,"y":660}],"edges":[{"from":"x-redis","to":"bull","label":"job delivery","kind":"async"},{"from":"bull","to":"jobsvc","label":"handler dispatch"},{"from":"jobsvc","to":"metadata","label":"AssetExtractMetadata"},{"from":"jobsvc","to":"template","label":"StorageTemplateMigrationSingle"},{"from":"jobsvc","to":"media","label":"AssetGenerateThumbnails"},{"from":"jobsvc","to":"smart","label":"SmartSearch"},{"from":"jobsvc","to":"person","label":"AssetDetectFaces · FacialRecognition"},{"from":"jobsvc","to":"ocr","label":"Ocr"},{"from":"jobsvc","to":"x-redis","label":"queues the next job","kind":"async"},{"from":"metadata","to":"x-db","label":"exif + geodata_places"},{"from":"template","to":"x-files","label":"move into template path"},{"from":"media","to":"x-files","label":"write thumbs + encoded video"},{"from":"smart","to":"mlrepo","label":"encodeImage(path)"},{"from":"person","to":"mlrepo","label":"detectFaces(path)"},{"from":"ocr","to":"mlrepo","label":"detect + recognise text"},{"from":"mlrepo","to":"x-ml","label":"POST /predict"},{"from":"smart","to":"x-db","label":"upsert smart_search"},{"from":"person","to":"x-db","label":"searchFaces · vchordrq"},{"from":"person","to":"x-redis","label":"deferred recognition","kind":"async"}]},"ml.components":{"id":"ml.components","name":"Machine learning","label":"Inside the machine learning service","parent":"containers","blurb":"A thin HTTP shell around a model cache. Nothing here is persistent except the ONNX files on disk.","canvas":{"w":1470,"h":718},"nodes":[{"id":"fastapi","name":"FastAPI app","kind":"component","tech":"/predict · /ping","desc":"Two endpoints that matter. Every request names its own model and options, so the service holds no per-instance configuration of its own.","x":340,"y":300},{"id":"cache","name":"ModelCache","kind":"component","tech":"in-memory · TTL 300s","desc":"Keeps loaded models resident between requests and evicts them after five idle minutes. A background poller does the eviction, so idle memory actually comes back.","x":620,"y":120},{"id":"loader","name":"InferenceModel.load","kind":"component","tech":"download + session","desc":"On a cache miss it fetches the model from the Hub if it is not on disk yet, then builds a runtime session for it. First request after a model change is slow; the rest are not.","x":900,"y":120},{"id":"pool","name":"Thread pool","kind":"component","tech":"ThreadPoolExecutor","desc":"Inference is synchronous and CPU-bound, so it runs off the event loop. Without this one slow image would stall every other request.","x":620,"y":440},{"id":"clip","name":"CLIP models","kind":"component","tech":"visual + textual","desc":"Two halves of the same model, loaded independently. Images go through the visual half at upload; search queries go through the textual half.","x":900,"y":340},{"id":"face","name":"Facial recognition","kind":"component","tech":"detection + recognition","desc":"A detector that returns boxes and a recogniser that turns each box into an embedding. One request runs both.","x":900,"y":460},{"id":"ocrm","name":"OCR models","kind":"component","tech":"detection + recognition","desc":"Finds text regions, then reads them. Scores for the two stages are thresholded separately.","x":900,"y":580},{"id":"session","name":"ONNX session","kind":"component","tech":"ORT · CUDA/OpenVINO/ArmNN","desc":"Every model is ONNX, which is why the same image can run on a CPU, an Nvidia GPU or a Raspberry Pi accelerator by changing only the tag.","x":1200,"y":460},{"id":"x-micro","name":"Job worker","kind":"external","tech":"container boundary","desc":"Another container.","x":60,"y":300},{"id":"x-cache","name":"Model cache volume","kind":"store","tech":"/cache","desc":"The only volume this container mounts. It holds ONNX files and nothing about your photos.","x":1200,"y":200},{"id":"x-hf","name":"Hugging Face Hub","kind":"external","tech":"model download","desc":"Reached once per model, then never again.","x":1200,"y":60}],"edges":[{"from":"x-micro","to":"fastapi","label":"POST /predict · multipart"},{"from":"fastapi","to":"cache","label":"get(name, type, task)"},{"from":"cache","to":"loader","label":"on miss"},{"from":"loader","to":"x-hf","label":"snapshot_download"},{"from":"loader","to":"x-cache","label":"write ONNX"},{"from":"loader","to":"session","label":"new InferenceSession"},{"from":"fastapi","to":"pool","label":"run off the event loop"},{"from":"pool","to":"clip","label":"predict(image | text)"},{"from":"pool","to":"face","label":"predict(image)"},{"from":"pool","to":"ocrm","label":"predict(image)"},{"from":"clip","to":"session","label":"session.run"},{"from":"face","to":"session","label":"session.run"},{"from":"ocrm","to":"session","label":"session.run"},{"from":"session","to":"x-cache","label":"mmap weights"}]}},"flows":[{"id":"upload","name":"Back up a photo","level":"containers","meta":"12 cues · happy path","cues":[{"from":"mobile","to":"api","title":"Upload posted","note":"Multipart <b>POST /api/assets</b> with a checksum computed on the phone. If the server already holds that checksum it answers <b>duplicate</b> and the bytes are discarded."},{"from":"api","to":"files","title":"Original written","note":"Straight to disk under <b>upload/</b>. This is the last time anything writes to the original file; every later stage only reads it."},{"from":"api","to":"redis","title":"Metadata job queued","note":"The request ends here. <b>AssetExtractMetadata</b> goes on the metadataExtraction queue and the phone gets its 201 back."},{"from":"redis","to":"micro","title":"Worker picks it up","note":"The job worker drains the queue. Exif is read, and the coordinates become a place name using a table in Postgres — <b>no geocoding API is called</b>."},{"from":"micro","to":"files","title":"Thumbnails written","note":"The file is first moved into the user's folder template, then sharp produces preview and thumbnail plus a <b>thumbhash</b> for the blurred placeholder."},{"from":"micro","to":"redis","title":"Second wave queued","note":"Only now, and only for an upload: <b>SmartSearch</b>, <b>AssetDetectFaces</b> and <b>Ocr</b> are queued together, plus <b>AssetEncodeVideo</b> if it is a video."},{"from":"redis","to":"micro","title":"Fan-out runs","note":"Three separate queues with independent concurrency. A slow transcode cannot hold up face detection."},{"from":"micro","to":"ml","title":"Embedding requested","note":"The preview is read and posted as <b>multipart bytes</b> with the model name attached. The ML container has no access to the media volume at all."},{"from":"micro","to":"db","title":"Embedding stored","note":"Upserted into <b>smart_search</b>, indexed by vchordrq with cosine distance. The photo is searchable by description from this moment."},{"from":"micro","to":"redis","title":"Client event published","note":"The job worker has no websocket connections of its own, so it publishes <b>on_upload_success</b> through the socket.io Redis adapter instead."},{"from":"redis","to":"api","title":"Handed to the socket server","note":"The API worker holds the actual connection. The adapter is the only reason a job finishing in one process can reach a browser attached to another."},{"from":"api","to":"mobile","title":"Photo appears","note":"Emitted into a room named after the user id, so the event reaches every device that person has open and nobody else."}]},{"id":"search","name":"Search in your own words","level":"containers","meta":"4 cues · no job queue involved","cues":[{"from":"web","to":"api","title":"Query submitted","note":"<b>POST /api/search/smart</b> with free text like \"red bicycle in the snow\". This path is entirely synchronous — no queue, no worker."},{"from":"api","to":"ml","title":"Query encoded","note":"The API worker calls the ML service directly. Results are memoised on <b>model name + query + language</b>, so a repeated search skips inference entirely."},{"from":"api","to":"db","title":"Nearest neighbours","note":"Cosine search over the same <b>smart_search</b> vectors written at upload. <b>vchordrq.probes</b> is set per transaction, trading recall for latency."},{"from":"api","to":"web","title":"Results returned","note":"Ranked assets, filtered to what this user is allowed to see. The text was never compared to a caption — both sides are vectors."}]},{"id":"pipeline","name":"One job, then the next","level":"jobs.components","meta":"11 cues · the orchestrator","cues":[{"from":"x-redis","to":"bull","title":"Job delivered","note":"One BullMQ worker per queue. Concurrency is applied after construction from system config, so the admin UI can retune it live."},{"from":"bull","to":"jobsvc","title":"Handler dispatched","note":"Jobs are routed by decorator — a handler declares its <b>JobName</b> and queue, and startup fails loudly if one is missing."},{"from":"jobsvc","to":"metadata","title":"Exif extracted","note":"Dates, dimensions, camera, coordinates. The place name comes from <b>geodata_places</b> in Postgres, matched within 500km of a populated place, falling back to country boundaries."},{"from":"jobsvc","to":"template","title":"Moved into place","note":"The original is renamed into the user's folder template. This step only continues the chain when the asset came from an <b>upload</b> or a <b>copy</b>."},{"from":"jobsvc","to":"media","title":"Preview generated","note":"Preview, thumbnail and thumbhash. Everything downstream reads the <b>preview</b>, never the original — which is why this step gates the rest."},{"from":"jobsvc","to":"x-redis","title":"Fan-out queued","note":"Smart search, face detection and OCR queued in one call, plus video transcode for a video. The services being queued know nothing about each other."},{"from":"x-redis","to":"bull","title":"Second wave delivered","note":"Three different queues now, each with its own concurrency and its own pause switch in the admin console."},{"from":"bull","to":"jobsvc","title":"Dispatched again","note":"Same dispatch path, different handler. There is no separate pipeline engine — <b>onDone</b> is the whole thing."},{"from":"jobsvc","to":"smart","title":"Embedding requested","note":"The preview path is handed over for CLIP encoding."},{"from":"smart","to":"mlrepo","title":"Sent to a healthy server","note":"Healthy urls are tried first, then the unhealthy ones anyway, and only an all-url failure throws. A <b>/ping</b> check on a timer maintains the health map."},{"from":"smart","to":"x-db","title":"Embedding upserted","note":"The configured model name is re-read after inference — if an admin swapped models mid-job the result is <b>discarded</b> rather than mixed into the index."}]},{"id":"faces","name":"A face waits for a crowd","level":"jobs.components","meta":"9 cues · deferred and retried","cues":[{"from":"x-redis","to":"bull","title":"Recognition delivered","note":"One job per detected face on the <b>facialRecognition</b> queue. Detection already ran and wrote the embeddings; this step only clusters."},{"from":"bull","to":"jobsvc","title":"Dispatched","note":"A face that already has a person is skipped immediately, so re-running the queue over a whole library is cheap."},{"from":"jobsvc","to":"person","title":"Neighbours looked up","note":"The face's embedding is searched against every other face this user owns, bounded by <b>maxDistance</b>."},{"from":"person","to":"x-db","title":"Vector search runs","note":"A separate vchordrq index from smart search, with its own probes setting. Matches are also filtered by <b>birth date</b> so a person cannot be matched to photos predating them."},{"from":"person","to":"x-redis","title":"Deferred, not discarded","note":"Fewer than <b>minFaces</b> matches means this is not yet a core face. Rather than inventing a person, the job is re-queued with <b>deferred: true</b> and drops to the back."},{"from":"x-redis","to":"bull","title":"Second attempt","note":"By the time the deferred job runs, other faces from the same batch have been clustered — so the crowd it needed may now exist."},{"from":"bull","to":"jobsvc","title":"Dispatched again","note":"Same handler, this time with the deferred flag set, which disables the defer branch. A face is deferred at most once."},{"from":"jobsvc","to":"person","title":"Matched to a person","note":"If any neighbour already belongs to a person, this face joins them. Only a core face with no match at all creates a new unnamed person."},{"from":"person","to":"x-db","title":"Face reassigned","note":"The face row gets its person id. A new person also triggers a thumbnail job, which is why an unnamed face appears in the People tab within seconds."}]}]};
+/* @@MODEL_END@@ */
+
+/* The visual vocabulary is fixed by the renderer, not by the model, so that
+   every diagram built with this template reads the same way. */
+const KINDS = {
+  person:   {label:'Person',   color:'var(--gel-rose)'},
+  client:   {label:'Client',   color:'var(--gel-amber)'},
+  focus:    {label:'System',   color:'var(--gel-amber)'},
+  service:  {label:'Service',  color:'var(--chalk)'},
+  component:{label:'Component',color:'var(--chalk)'},
+  store:    {label:'Store',    color:'var(--gel-teal)'},
+  queue:    {label:'Bus',      color:'var(--gel-lav)'},
+  external: {label:'External', color:'var(--gel-ext)'}
+};
+MODEL.kinds = KINDS;
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const NODE_W = 210, NODE_H = 78;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const state = {
+  level: MODEL.entry || Object.keys(MODEL.levels)[0] || null,
+  selected: null,
+  hovered: null,
+  flow: null,
+  cue: 0,
+  playing: false,
+  query: '',
+  allLabels: false,
+  grid: true,
+  view: {x:0, y:0, k:1}
+};
+let timer = null;
+
+const $ = s => document.querySelector(s);
+const svg = $('#plot');
+const NS = 'http://www.w3.org/2000/svg';
+
+/* normalise node sizes once */
+Object.values(MODEL.levels).forEach(L=>{
+  L.nodes.forEach(n=>{ n.w = n.w || NODE_W; n.h = n.h || NODE_H; });
+  L.map = Object.fromEntries(L.nodes.map(n=>[n.id,n]));
+  L.edges.forEach(e=>{ e.id = e.from+'~'+e.to; });
+});
+
+const level = () => MODEL.levels[state.level];
+const node  = id => level().map[id];
+const flow  = () => MODEL.flows.find(f=>f.id===state.flow) || null;
+
+/* =========================================================================
+   GEOMETRY
+   ========================================================================= */
+function borderPoint(n, tx, ty){
+  const cx = n.x + n.w/2, cy = n.y + n.h/2;
+  const dx = tx - cx, dy = ty - cy;
+  if(!dx && !dy) return {x:cx, y:cy};
+  const hw = n.w/2 + 7, hh = n.h/2 + 7;
+  const s = Math.min(dx ? hw/Math.abs(dx) : Infinity, dy ? hh/Math.abs(dy) : Infinity);
+  return {x: cx + dx*s, y: cy + dy*s};
+}
+function edgeGeom(e){
+  const a = node(e.from), b = node(e.to);
+  if(!a || !b) return null;
+  const ac = {x:a.x+a.w/2, y:a.y+a.h/2}, bc = {x:b.x+b.w/2, y:b.y+b.h/2};
+  const p1 = borderPoint(a, bc.x, bc.y), p2 = borderPoint(b, ac.x, ac.y);
+  return {p1, p2, mid:{x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2}};
+}
+
+/* =========================================================================
+   RENDER — stage
+   ========================================================================= */
+function el(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text != null) e.textContent = text;
+  return e;
+}
+
+function relatedIds(id){
+  const set = new Set([id]);
+  level().edges.forEach(e=>{ if(e.from===id) set.add(e.to); if(e.to===id) set.add(e.from); });
+  return set;
+}
+
+function renderStage(){
+  const L = level();
+  svg.textContent = '';
+
+  /* defs */
+  const defs = el('defs');
+  [['arrow','var(--rule)'],['arrow-lit','var(--chalk-dim)'],['arrow-hot','var(--gel-amber)']].forEach(([id,col])=>{
+    const m = el('marker',{id, viewBox:'0 0 10 10', refX:'9', refY:'5',
+      markerWidth:'6', markerHeight:'6', orient:'auto-start-reverse'});
+    m.appendChild(el('path',{d:'M0,0 L10,5 L0,10 Z', fill:col}));
+    defs.appendChild(m);
+  });
+  const pat = el('pattern',{id:'dots', width:'44', height:'44', patternUnits:'userSpaceOnUse'});
+  pat.appendChild(el('circle',{cx:'1.5', cy:'1.5', r:'1.1', class:'grid-dot'}));
+  defs.appendChild(pat);
+  svg.appendChild(defs);
+
+  const vp = el('g',{id:'viewport'});
+  svg.appendChild(vp);
+
+  if(state.grid) vp.appendChild(el('rect',{x:-4000, y:-4000, width:9000, height:9000, fill:'url(#dots)'}));
+
+  const f = flow();
+  const activeCue = f ? f.cues[state.cue] : null;
+  const activeEdgeId = activeCue ? activeCue.from+'~'+activeCue.to : null;
+  const focusSet = state.hovered ? relatedIds(state.hovered)
+                 : state.selected ? relatedIds(state.selected) : null;
+  const q = state.query.trim().toLowerCase();
+  const matches = q ? new Set(L.nodes.filter(n =>
+      (n.name+' '+n.tech+' '+(n.desc||'')).toLowerCase().includes(q)).map(n=>n.id)) : null;
+
+  /* --- edges --- */
+  const gEdges = el('g'), gLabels = el('g');
+  vp.appendChild(gEdges); vp.appendChild(gLabels);
+
+  L.edges.forEach(e=>{
+    const g = edgeGeom(e); if(!g) return;
+    const isHot = e.id === activeEdgeId;
+    const touched = focusSet && (focusSet.has(e.from) && focusSet.has(e.to));
+    let cls = 'edge' + (e.kind==='async' ? ' async' : '');
+    let marker = 'arrow';
+
+    if(isHot){ cls += ' hot'; marker = 'arrow-hot'; }
+    else if(f){ cls += ' faded'; }
+    else if(touched){ cls += ' lit'; marker = 'arrow-lit'; }
+    else if(focusSet || matches){ cls += ' faded'; }
+
+    const path = el('path',{
+      id:'e-'+e.id, class:cls,
+      d:`M${g.p1.x},${g.p1.y} L${g.p2.x},${g.p2.y}`,
+      'marker-end':`url(#${marker})`
+    });
+    gEdges.appendChild(path);
+
+    const showLabel = isHot || state.allLabels || (!f && touched);
+    if(showLabel && e.label){
+      const t = el('text',{x:g.mid.x, y:g.mid.y, class:'e-label',
+        'text-anchor':'middle','dominant-baseline':'middle'}, e.label);
+      const bg = el('rect',{class:'e-label-bg', rx:'2'});
+      gLabels.appendChild(bg); gLabels.appendChild(t);
+      requestAnimationFrame(()=>{
+        try{
+          const bb = t.getBBox();
+          bg.setAttribute('x', bb.x-5); bg.setAttribute('y', bb.y-2.5);
+          bg.setAttribute('width', bb.width+10); bg.setAttribute('height', bb.height+5);
+        }catch(_){}
+      });
+      if(isHot) t.setAttribute('fill','var(--gel-amber)');
+    }
+
+    /* travelling pulse on the live cue */
+    if(isHot && !reduceMotion){
+      const dot = el('circle',{r:'4.5', class:'pulse'});
+      const anim = el('animateMotion',{dur:'1.5s', repeatCount:'indefinite',
+        path:`M${g.p1.x},${g.p1.y} L${g.p2.x},${g.p2.y}`});
+      dot.appendChild(anim);
+      gEdges.appendChild(dot);
+    }
+  });
+
+  /* --- nodes --- */
+  L.nodes.forEach(n=>{
+    const kind = MODEL.kinds[n.kind] || MODEL.kinds.service;
+    const isSel = state.selected === n.id;
+    const inCue = activeCue && (activeCue.from===n.id || activeCue.to===n.id);
+    let cls = 'node';
+    if(isSel) cls += ' sel';
+    if(inCue || isSel) cls += ' hit';
+    if(f && !inCue) cls += ' dim';
+    else if(!f && focusSet && !focusSet.has(n.id)) cls += ' dim';
+    if(matches && !matches.has(n.id)) cls += ' dim';
+
+    const g = el('g',{class:cls, transform:`translate(${n.x},${n.y})`, 'data-id':n.id,
+      tabindex:'0', role:'button', 'aria-label':n.name});
+
+    const stroke = inCue ? 'var(--gel-amber)' : kind.color;
+    g.appendChild(el('rect',{
+      class:'n-box', width:n.w, height:n.h, rx:'3',
+      stroke, 'stroke-dasharray': n.kind==='external' ? '6 4' : 'none'
+    }));
+    if(n.kind==='focus' || n.kind==='queue'){
+      g.appendChild(el('rect',{x:0, y:0, width:n.w, height:n.h, rx:'3',
+        fill:stroke, opacity:'0.07', 'pointer-events':'none'}));
+    }
+    g.appendChild(el('text',{x:16, y:24, class:'n-kind', fill:stroke}, kind.label));
+    g.appendChild(el('text',{x:16, y:48, class:'n-name'}, n.name));
+    g.appendChild(el('text',{x:16, y:66, class:'n-tech'}, n.tech));
+    if(n.drill) g.appendChild(el('text',{x:n.w-16, y:24, class:'drill-tag','text-anchor':'end'}, '⤢ open'));
+
+    g.addEventListener('click', ev=>{ ev.stopPropagation(); select(n.id); });
+    g.addEventListener('dblclick', ev=>{ ev.stopPropagation(); if(n.drill) goLevel(n.drill); });
+    g.addEventListener('keydown', ev=>{
+      if(ev.key==='Enter'){ n.drill ? goLevel(n.drill) : select(n.id); }
+      if(ev.key===' '){ ev.preventDefault(); select(n.id); }
+    });
+    vp.appendChild(g);
+  });
+
+  applyView();
+}
+
+function applyView(){
+  const vp = svg.querySelector('#viewport');
+  if(vp) vp.setAttribute('transform', `translate(${state.view.x},${state.view.y}) scale(${state.view.k})`);
+}
+
+/* =========================================================================
+   RENDER — chrome
+   ========================================================================= */
+function renderCrumbs(){
+  const chain = [];
+  let id = state.level;
+  while(id){ chain.unshift(MODEL.levels[id]); id = MODEL.levels[id].parent; }
+  const wrap = $('#crumbs'); wrap.innerHTML = '';
+  chain.forEach((L,i)=>{
+    if(i) wrap.insertAdjacentHTML('beforeend','<span class="crumb-sep">/</span>');
+    const b = document.createElement('button');
+    b.className = 'crumb' + (L.id===state.level ? ' here' : '');
+    b.textContent = L.name;
+    b.onclick = ()=> goLevel(L.id);
+    wrap.appendChild(b);
+  });
+}
+
+function renderRail(){
+  const list = $('#flow-list'); list.innerHTML = '';
+  MODEL.flows.forEach(f=>{
+    const b = document.createElement('button');
+    b.className = 'flow-btn' + (state.flow===f.id ? ' on' : '');
+    b.innerHTML = `<span class="fn">${f.name}</span><span class="fm">${f.meta}</span>`;
+    b.onclick = ()=> state.flow===f.id ? stopFlow() : startFlow(f.id);
+    list.appendChild(b);
+  });
+
+  const used = new Set(level().nodes.map(n=>n.kind));
+  $('#key').innerHTML = Object.entries(MODEL.kinds)
+    .filter(([k])=>used.has(k))
+    .map(([k,v])=>`<div class="key-row"><span class="swatch" style="border-color:${v.color};background:${v.color}22"></span>${v.label}</div>`)
+    .join('') + `<div class="key-row" style="margin-top:12px"><svg width="14" height="14"><line x1="0" y1="7" x2="14" y2="7" stroke="var(--chalk-faint)" stroke-width="1.4" stroke-dasharray="4 3"/></svg>Asynchronous</div>`;
+
+  $('#tgl-labels').classList.toggle('on', state.allLabels);
+  $('#tgl-grid').classList.toggle('on', state.grid);
+}
+
+function renderInspector(){
+  const box = $('#inspector');
+  const L = level();
+  const n = state.selected ? node(state.selected) : null;
+
+  if(!n){
+    box.innerHTML = `
+      <div class="ins-kind" style="color:var(--gel-amber)">${L.name}</div>
+      <h2 class="ins-name">${L.label}</h2>
+      <p class="ins-desc">${L.blurb}</p>
+      <div class="stat-grid">
+        <div class="stat"><b>${L.nodes.length}</b><span>parts</span></div>
+        <div class="stat"><b>${L.edges.length}</b><span>connections</span></div>
+        <div class="stat"><b>${L.edges.filter(e=>e.kind==='async').length}</b><span>async</span></div>
+        <div class="stat"><b>${L.nodes.filter(x=>x.drill).length}</b><span>can open</span></div>
+      </div>
+      <p class="ins-desc">Pick a part to see what it does and who it talks to. Or run a flow from the left to watch a request move through this level.</p>`;
+    return;
+  }
+
+  const kind = MODEL.kinds[n.kind] || MODEL.kinds.service;
+  const out = L.edges.filter(e=>e.from===n.id);
+  const inc = L.edges.filter(e=>e.to===n.id);
+  const row = (e,dir) => {
+    const other = node(dir==='out' ? e.to : e.from);
+    return `<button class="link-row" data-goto="${other.id}">
+      <span class="lr-arrow">${dir==='out' ? '→' : '←'}</span>
+      <span><span class="lr-name">${other.name}</span><span class="lr-note">${e.label||''}</span></span>
+    </button>`;
+  };
+
+  box.innerHTML = `
+    <div class="ins-kind" style="color:${kind.color}">${kind.label}</div>
+    <h2 class="ins-name">${n.name}</h2>
+    <p class="ins-tech">${n.tech}</p>
+    <p class="ins-desc">${n.desc||''}</p>
+    ${out.length ? `<div class="ins-sec"><p class="eyebrow">Talks to</p>${out.map(e=>row(e,'out')).join('')}</div>`:''}
+    ${inc.length ? `<div class="ins-sec"><p class="eyebrow">Called by</p>${inc.map(e=>row(e,'in')).join('')}</div>`:''}
+    ${n.drill ? `<button class="drill-btn" data-drill="${n.drill}">Open ${MODEL.levels[n.drill].name}</button>`:''}`;
+
+  box.querySelectorAll('[data-goto]').forEach(b=> b.onclick = ()=> select(b.dataset.goto));
+  const d = box.querySelector('[data-drill]');
+  if(d) d.onclick = ()=> goLevel(d.dataset.drill);
+}
+
+function renderCueSheet(){
+  const bar = $('#cuesheet');
+  const f = flow();
+  if(!f){ bar.classList.remove('up'); bar.innerHTML=''; return; }
+  const c = f.cues[state.cue];
+  bar.innerHTML = `
+    <div class="cue-head">
+      <span class="cue-title">${f.name}</span>
+      <span class="cue-note"><strong style="color:var(--chalk)">${c.title}.</strong> ${c.note}</span>
+      <span class="transport">
+        <button data-act="prev" title="Previous cue">◀</button>
+        <button data-act="play" title="Play or pause">${state.playing?'❚❚':'▶'}</button>
+        <button data-act="next" title="Next cue">▶</button>
+        <button data-act="stop" class="x" title="Close flow">✕</button>
+      </span>
+    </div>
+    <div class="cue-track">
+      ${f.cues.map((q,i)=>`<button class="cue ${i===state.cue?'now':(i<state.cue?'done':'')}" data-cue="${i}">
+        <span class="cn">${String(i+1).padStart(2,'0')}</span><span class="ct">${q.title}</span></button>`).join('')}
+    </div>`;
+  bar.classList.add('up');
+  bar.querySelectorAll('[data-cue]').forEach(b=> b.onclick = ()=>{ pause(); state.cue = +b.dataset.cue; renderStage(); renderCueSheet(); });
+  bar.querySelectorAll('[data-act]').forEach(b=> b.onclick = ()=>{
+    const a = b.dataset.act;
+    if(a==='prev') step(-1);
+    if(a==='next') step(1);
+    if(a==='play') state.playing ? pause() : play();
+    if(a==='stop') stopFlow();
+  });
+}
+
+function renderAll(){ renderStage(); renderCrumbs(); renderRail(); renderInspector(); renderCueSheet(); }
+
+/* =========================================================================
+   ACTIONS
+   ========================================================================= */
+function select(id){
+  state.selected = state.selected===id ? null : id;
+  state.hovered = null;
+  renderStage(); renderInspector();
+  if(window.innerWidth<=1080 && state.selected) $('#inspector').classList.add('open');
+}
+
+function goLevel(id){
+  if(!MODEL.levels[id]) return;
+  stopFlow(true);
+  state.level = id; state.selected = null; state.hovered = null; state.query = '';
+  $('#find').value = '';
+  fit();
+  renderAll();
+}
+
+function startFlow(id){
+  const f = MODEL.flows.find(x=>x.id===id); if(!f) return;
+  state.flow = id; state.cue = 0; state.selected = null; state.hovered = null;
+  if(state.level !== f.level){ state.level = f.level; fit(); }
+  play();
+  renderAll();
+  if(window.innerWidth<=1080) $('#rail').classList.remove('open');
+}
+function stopFlow(quiet){
+  pause();
+  state.flow = null; state.cue = 0;
+  if(!quiet) renderAll();
+}
+function step(d){
+  const f = flow(); if(!f) return;
+  state.cue = (state.cue + d + f.cues.length) % f.cues.length;
+  renderStage(); renderCueSheet();
+}
+function play(){
+  const f = flow(); if(!f) return;
+  state.playing = true;
+  clearInterval(timer);
+  timer = setInterval(()=>{
+    const ff = flow(); if(!ff) return pause();
+    if(state.cue >= ff.cues.length-1){ pause(); renderCueSheet(); return; }
+    state.cue++; renderStage(); renderCueSheet();
+  }, 2400);
+  renderCueSheet();
+}
+function pause(){ state.playing = false; clearInterval(timer); timer = null; }
+
+/* =========================================================================
+   PAN / ZOOM
+   ========================================================================= */
+function fit(){
+  const L = level();
+  const r = svg.getBoundingClientRect();
+  const pad = 70, bottom = flow() ? 120 : 40;
+  const k = Math.min((r.width-pad*2)/L.canvas.w, (r.height-pad-bottom)/L.canvas.h, 1.25);
+  state.view.k = k;
+  state.view.x = (r.width - L.canvas.w*k)/2;
+  state.view.y = (r.height - bottom - L.canvas.h*k)/2 + 10;
+  applyView();
+}
+function zoomAt(cx, cy, factor){
+  const k2 = Math.min(2.6, Math.max(0.25, state.view.k*factor));
+  const f = k2/state.view.k;
+  state.view.x = cx - (cx - state.view.x)*f;
+  state.view.y = cy - (cy - state.view.y)*f;
+  state.view.k = k2;
+  applyView();
+}
+
+let drag = null;
+svg.addEventListener('pointerdown', e=>{
+  if(e.target.closest('.node')) return;
+  drag = {x:e.clientX, y:e.clientY, vx:state.view.x, vy:state.view.y};
+  svg.classList.add('dragging'); svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  state.view.x = drag.vx + (e.clientX-drag.x);
+  state.view.y = drag.vy + (e.clientY-drag.y);
+  applyView();
+});
+['pointerup','pointercancel'].forEach(t=> svg.addEventListener(t, ()=>{ drag=null; svg.classList.remove('dragging'); }));
+svg.addEventListener('click', e=>{ if(!e.target.closest('.node')) select(null); });
+
+/* hover is delegated to the svg itself, which survives every re-render */
+svg.addEventListener('mousemove', e=>{
+  if(drag || flow()) return;
+  const g = e.target.closest ? e.target.closest('.node') : null;
+  const id = g ? g.dataset.id : null;
+  if(id !== state.hovered){ state.hovered = id; renderStage(); }
+});
+svg.addEventListener('mouseleave', ()=>{ if(state.hovered){ state.hovered = null; renderStage(); } });
+svg.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  zoomAt(e.clientX-r.left, e.clientY-r.top, e.deltaY < 0 ? 1.12 : 1/1.12);
+}, {passive:false});
+
+$('#z-in').onclick  = ()=>{ const r=svg.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.2); };
+$('#z-out').onclick = ()=>{ const r=svg.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1/1.2); };
+$('#z-fit').onclick = fit;
+
+/* =========================================================================
+   INPUT
+   ========================================================================= */
+$('#find').addEventListener('input', e=>{ state.query = e.target.value; renderStage(); });
+$('#tgl-labels').onclick = ()=>{ state.allLabels = !state.allLabels; renderRail(); renderStage(); };
+$('#tgl-grid').onclick   = ()=>{ state.grid = !state.grid; renderRail(); renderStage(); };
+$('#tgl-rail').onclick = ()=>{ $('#rail').classList.toggle('open'); $('#inspector').classList.remove('open'); };
+$('#tgl-ins').onclick  = ()=>{ $('#inspector').classList.toggle('open'); $('#rail').classList.remove('open'); };
+
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName === 'INPUT') { if(e.key==='Escape') e.target.blur(); return; }
+  if(e.key==='ArrowRight'){ pause(); step(1); }
+  if(e.key==='ArrowLeft'){ pause(); step(-1); }
+  if(e.key===' ' && flow()){ e.preventDefault(); state.playing ? pause() : play(); }
+  if(e.key==='Escape'){
+    if(flow()) stopFlow();
+    else if(state.selected) select(null);
+    else if(level().parent) goLevel(level().parent);
+  }
+  if(e.key==='f' || e.key==='F') fit();
+});
+
+let rt;
+window.addEventListener('resize', ()=>{ clearTimeout(rt); rt = setTimeout(()=>{ applyView(); }, 120); });
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+(function validate(){
+  Object.values(MODEL.levels).forEach(L=>{
+    L.edges.forEach(e=>{
+      if(!L.map[e.from]) console.warn(`[${L.id}] edge references missing node: ${e.from}`);
+      if(!L.map[e.to])   console.warn(`[${L.id}] edge references missing node: ${e.to}`);
+    });
+  });
+  MODEL.flows.forEach(f=>{
+    const L = MODEL.levels[f.level];
+    f.cues.forEach((c,i)=>{
+      if(!L.edges.some(e=>e.from===c.from && e.to===c.to))
+        console.warn(`[flow ${f.id}] cue ${i+1} has no matching edge: ${c.from} → ${c.to}`);
+    });
+  });
+})();
+
+document.title = (MODEL.name || 'Architecture') + ' — architecture plot';
+$('#mark-name').textContent = MODEL.name || 'Untitled';
+$('#mark-tag').textContent = MODEL.tagline || 'architecture plot';
+
+if(!state.level){
+  $('#inspector').innerHTML = '<div class="ins-kind" style="color:var(--gel-amber)">Nothing to draw</div>'
+    + '<h2 class="ins-name">This plot has no levels</h2>'
+    + '<p class="ins-desc">Add at least one level to the model and rebuild with '
+    + '<code>plot.py build</code>.</p>';
+}else{
+  renderAll();
+  fit();
+  applyView();
+}
+
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{ fit(); renderStage(); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1025 @@
+{
+  "name": "Immich",
+  "tagline": "self-hosted photo & video backup",
+  "entry": "containers",
+  "levels": {
+    "context": {
+      "id": "context",
+      "name": "Context",
+      "label": "Immich in the world",
+      "blurb": "Who uses a self-hosted Immich instance, and the few outside services it reaches for. Almost nothing leaves the box — that is the point of the product.",
+      "canvas": {
+        "w": 1070,
+        "h": 678
+      },
+      "nodes": [
+        {
+          "id": "owner",
+          "name": "Photo owner",
+          "kind": "person",
+          "tech": "phone + browser",
+          "desc": "Backs up a camera roll, then expects to find a photo by describing it months later. Never has to hand the library to anyone else's cloud.",
+          "x": 60,
+          "y": 180
+        },
+        {
+          "id": "admin",
+          "name": "Administrator",
+          "kind": "person",
+          "tech": "admin console",
+          "desc": "Runs the box. Pauses queues, re-runs jobs over the whole library, swaps the CLIP model, and watches disk fill up.",
+          "x": 60,
+          "y": 400
+        },
+        {
+          "id": "immich",
+          "name": "Immich",
+          "kind": "focus",
+          "tech": "the system in question",
+          "w": 280,
+          "h": 130,
+          "drill": "containers",
+          "desc": "Stores originals on your own disk, derives thumbnails and embeddings from them, and serves a timeline, a map, people and search over the result.",
+          "x": 380,
+          "y": 250
+        },
+        {
+          "id": "library",
+          "name": "External library",
+          "kind": "external",
+          "tech": "read-only mount",
+          "desc": "A folder of existing photos Immich indexes in place and never moves. Watched with a filesystem watcher plus a nightly scan.",
+          "x": 800,
+          "y": 60
+        },
+        {
+          "id": "oidc",
+          "name": "OIDC provider",
+          "kind": "external",
+          "tech": "OpenID Connect",
+          "desc": "Optional single sign-on — Authelia, Keycloak, Authentik. Immich does discovery against the issuer and runs a PKCE authorization-code grant.",
+          "x": 800,
+          "y": 180
+        },
+        {
+          "id": "smtp",
+          "name": "SMTP server",
+          "kind": "external",
+          "tech": "nodemailer",
+          "desc": "Album invitations, welcome mail, password resets. The only outbound channel to a human who is not already logged in.",
+          "x": 800,
+          "y": 300
+        },
+        {
+          "id": "hf",
+          "name": "Hugging Face Hub",
+          "kind": "external",
+          "tech": "ONNX model files",
+          "desc": "Where models are fetched from on first use. After the first download the box works with no internet at all.",
+          "x": 800,
+          "y": 420
+        },
+        {
+          "id": "gh",
+          "name": "GitHub releases",
+          "kind": "external",
+          "tech": "version feed",
+          "desc": "Checked on a schedule so the admin console can say a newer version exists. Switchable off, and the only telemetry-shaped call in the system.",
+          "x": 800,
+          "y": 540
+        }
+      ],
+      "edges": [
+        {
+          "from": "owner",
+          "to": "immich",
+          "label": "uploads, browses, searches"
+        },
+        {
+          "from": "admin",
+          "to": "immich",
+          "label": "runs jobs, tunes models"
+        },
+        {
+          "from": "immich",
+          "to": "library",
+          "label": "indexes in place, watches for changes",
+          "kind": "async"
+        },
+        {
+          "from": "immich",
+          "to": "oidc",
+          "label": "discovery + authorization code"
+        },
+        {
+          "from": "immich",
+          "to": "smtp",
+          "label": "album invites, resets",
+          "kind": "async"
+        },
+        {
+          "from": "immich",
+          "to": "hf",
+          "label": "downloads ONNX models once"
+        },
+        {
+          "from": "immich",
+          "to": "gh",
+          "label": "scheduled version check",
+          "kind": "async"
+        }
+      ]
+    },
+    "containers": {
+      "id": "containers",
+      "name": "Containers",
+      "label": "Inside Immich",
+      "parent": "context",
+      "blurb": "Four containers in the compose file, but five things that run: the API and the job worker are separate Node workers that ship inside one image. Dashed lines are asynchronous.",
+      "canvas": {
+        "w": 1250,
+        "h": 958
+      },
+      "nodes": [
+        {
+          "id": "mobile",
+          "name": "Mobile app",
+          "kind": "client",
+          "tech": "Flutter · Dart",
+          "desc": "Does the actual backing up. Uploads in the background, tracks what it has already sent locally, and holds a websocket open so the timeline updates without a refresh.",
+          "x": 60,
+          "y": 110
+        },
+        {
+          "id": "web",
+          "name": "Web app",
+          "kind": "client",
+          "tech": "SvelteKit · served by the API",
+          "desc": "There is no web container. The API worker serves the built SvelteKit app itself as its fallback route, so the browser and the REST API share one origin.",
+          "x": 60,
+          "y": 240
+        },
+        {
+          "id": "cli",
+          "name": "CLI",
+          "kind": "client",
+          "tech": "@immich/cli · npm",
+          "desc": "Bulk upload from a shell. Hits the same public REST endpoints as the apps, generated from the same OpenAPI schema.",
+          "x": 60,
+          "y": 370
+        },
+        {
+          "id": "api",
+          "name": "API worker",
+          "kind": "service",
+          "tech": "NestJS · Express · Kysely",
+          "desc": "Answers every HTTP request, serves the web app, and owns the cron schedule. It never runs a background job — it only enqueues them.",
+          "x": 400,
+          "y": 240
+        },
+        {
+          "id": "micro",
+          "name": "Job worker",
+          "kind": "service",
+          "tech": "BullMQ · 18 queues",
+          "drill": "jobs.components",
+          "desc": "The 'microservices' worker. Same image and same code as the API, started as a second Node worker; IMMICH_WORKERS_EXCLUDE is all it takes to move it to another machine.",
+          "w": 230,
+          "x": 400,
+          "y": 600
+        },
+        {
+          "id": "ml",
+          "name": "Machine learning",
+          "kind": "service",
+          "tech": "FastAPI · ONNX Runtime",
+          "drill": "ml.components",
+          "desc": "Stateless inference over HTTP. It has no database credentials and no media volume — every request carries the image bytes and the model settings with it.",
+          "x": 740,
+          "y": 700
+        },
+        {
+          "id": "redis",
+          "name": "Redis",
+          "kind": "queue",
+          "tech": "Valkey 9 · BullMQ + socket.io",
+          "w": 540,
+          "h": 70,
+          "desc": "Two jobs in one. It is the job queue, and it is also the socket.io pub/sub backplane — which is how work finished in the job worker reaches a browser attached to the API worker.",
+          "x": 340,
+          "y": 430
+        },
+        {
+          "id": "db",
+          "name": "Postgres",
+          "kind": "store",
+          "tech": "PG 14 · VectorChord + pgvector",
+          "desc": "Everything durable, including both vector indexes and the offline place-name table. Also the coordination primitive: advisory locks decide which instance owns the cron schedule.",
+          "x": 980,
+          "y": 560
+        },
+        {
+          "id": "files",
+          "name": "Media store",
+          "kind": "store",
+          "tech": "filesystem · UPLOAD_LOCATION",
+          "desc": "Originals, thumbnails, transcoded video, profile images and backups under one mount. Originals are written once and then only ever read.",
+          "x": 980,
+          "y": 430
+        },
+        {
+          "id": "oidc",
+          "name": "OIDC provider",
+          "kind": "external",
+          "tech": "OpenID Connect",
+          "desc": "Optional. Only the API worker talks to it.",
+          "x": 400,
+          "y": 60
+        },
+        {
+          "id": "smtp",
+          "name": "SMTP server",
+          "kind": "external",
+          "tech": "mail relay",
+          "desc": "Reached from the notifications queue, never from a request thread.",
+          "x": 980,
+          "y": 700
+        },
+        {
+          "id": "gh",
+          "name": "GitHub releases",
+          "kind": "external",
+          "tech": "version feed",
+          "desc": "Polled by a scheduled job, not by the API.",
+          "x": 980,
+          "y": 820
+        }
+      ],
+      "edges": [
+        {
+          "from": "mobile",
+          "to": "api",
+          "label": "REST /api · multipart upload"
+        },
+        {
+          "from": "web",
+          "to": "api",
+          "label": "REST /api + app shell"
+        },
+        {
+          "from": "cli",
+          "to": "api",
+          "label": "POST /api/assets"
+        },
+        {
+          "from": "api",
+          "to": "files",
+          "label": "writes the original"
+        },
+        {
+          "from": "api",
+          "to": "db",
+          "label": "Kysely SQL"
+        },
+        {
+          "from": "api",
+          "to": "redis",
+          "label": "queue.add(job)"
+        },
+        {
+          "from": "api",
+          "to": "ml",
+          "label": "POST /predict · CLIP text"
+        },
+        {
+          "from": "api",
+          "to": "oidc",
+          "label": "discovery + code grant"
+        },
+        {
+          "from": "redis",
+          "to": "micro",
+          "label": "BullMQ job delivery",
+          "kind": "async"
+        },
+        {
+          "from": "micro",
+          "to": "files",
+          "label": "reads originals, writes derivatives"
+        },
+        {
+          "from": "micro",
+          "to": "db",
+          "label": "Kysely SQL + vector upsert"
+        },
+        {
+          "from": "micro",
+          "to": "ml",
+          "label": "POST /predict · image bytes"
+        },
+        {
+          "from": "micro",
+          "to": "redis",
+          "label": "follow-up jobs + client events",
+          "kind": "async"
+        },
+        {
+          "from": "micro",
+          "to": "smtp",
+          "label": "notifications queue",
+          "kind": "async"
+        },
+        {
+          "from": "micro",
+          "to": "gh",
+          "label": "GET latest release",
+          "kind": "async"
+        },
+        {
+          "from": "redis",
+          "to": "api",
+          "label": "socket.io adapter · pub/sub",
+          "kind": "async"
+        },
+        {
+          "from": "api",
+          "to": "mobile",
+          "label": "on_upload_success",
+          "kind": "async"
+        },
+        {
+          "from": "api",
+          "to": "web",
+          "label": "AssetUploadReadyV2",
+          "kind": "async"
+        }
+      ]
+    },
+    "jobs.components": {
+      "id": "jobs.components",
+      "name": "Job worker",
+      "label": "Inside the job worker",
+      "parent": "containers",
+      "blurb": "One BullMQ worker per queue, and one service that decides what happens next. Nothing to the right of the divide lives in this process.",
+      "canvas": {
+        "w": 1510,
+        "h": 798
+      },
+      "nodes": [
+        {
+          "id": "bull",
+          "name": "BullMQ workers",
+          "kind": "component",
+          "tech": "one Worker per queue",
+          "desc": "Eighteen workers, all constructed with concurrency 1 and then re-set at runtime from system config. Changing thumbnail concurrency in the admin UI needs no restart.",
+          "x": 145,
+          "y": 210
+        },
+        {
+          "id": "jobsvc",
+          "name": "JobService",
+          "kind": "component",
+          "tech": "orchestrator · onDone",
+          "desc": "The whole pipeline is here, and only here. Each handler returns a status and JobService decides what to enqueue next — the services themselves do not know the order.",
+          "x": 145,
+          "y": 400
+        },
+        {
+          "id": "metadata",
+          "name": "MetadataService",
+          "kind": "component",
+          "tech": "exiftool · geodata",
+          "desc": "Reads exif, then resolves the coordinates to a place name against a table in Postgres. No geocoding API is ever called.",
+          "x": 620,
+          "y": 60
+        },
+        {
+          "id": "template",
+          "name": "StorageTemplateService",
+          "kind": "component",
+          "tech": "path template",
+          "desc": "Renames the original into the user's configured folder template. Only continues the chain when the asset arrived by upload or copy.",
+          "x": 620,
+          "y": 180
+        },
+        {
+          "id": "media",
+          "name": "MediaService",
+          "kind": "component",
+          "tech": "sharp · ffmpeg",
+          "desc": "Thumbnails, previews and the transcoded video. This is the gate — nothing downstream can run until an asset has a preview image to look at.",
+          "x": 620,
+          "y": 300
+        },
+        {
+          "id": "smart",
+          "name": "SmartInfoService",
+          "kind": "component",
+          "tech": "CLIP embedding",
+          "desc": "Turns the preview into a vector. Re-checks the configured model name after inference and throws the result away if an admin changed it mid-flight.",
+          "x": 620,
+          "y": 420
+        },
+        {
+          "id": "person",
+          "name": "PersonService",
+          "kind": "component",
+          "tech": "detect + recognise",
+          "desc": "Two separate queues. Detection finds boxes and embeddings; recognition clusters one face at a time against everything already known.",
+          "x": 620,
+          "y": 540
+        },
+        {
+          "id": "ocr",
+          "name": "OcrService",
+          "kind": "component",
+          "tech": "text in images",
+          "desc": "Pulls readable text out of the preview so screenshots and signs become searchable.",
+          "x": 620,
+          "y": 660
+        },
+        {
+          "id": "mlrepo",
+          "name": "MachineLearningRepo",
+          "kind": "component",
+          "tech": "health-ordered fan-out",
+          "desc": "Pings every configured ML url on a timer and tries the healthy ones first, then the unhealthy ones anyway. It only fails when every url has failed.",
+          "x": 950,
+          "y": 660
+        },
+        {
+          "id": "x-redis",
+          "name": "Redis",
+          "kind": "queue",
+          "tech": "BullMQ",
+          "w": 400,
+          "h": 70,
+          "desc": "Shared queue.",
+          "x": 60,
+          "y": 60
+        },
+        {
+          "id": "x-db",
+          "name": "Postgres",
+          "kind": "store",
+          "tech": "vchordrq indexes",
+          "desc": "Shared database.",
+          "x": 950,
+          "y": 420
+        },
+        {
+          "id": "x-files",
+          "name": "Media store",
+          "kind": "store",
+          "tech": "filesystem",
+          "desc": "Shared mount.",
+          "x": 950,
+          "y": 180
+        },
+        {
+          "id": "x-ml",
+          "name": "Machine learning",
+          "kind": "external",
+          "tech": "container boundary",
+          "desc": "Another container.",
+          "x": 1240,
+          "y": 660
+        }
+      ],
+      "edges": [
+        {
+          "from": "x-redis",
+          "to": "bull",
+          "label": "job delivery",
+          "kind": "async"
+        },
+        {
+          "from": "bull",
+          "to": "jobsvc",
+          "label": "handler dispatch"
+        },
+        {
+          "from": "jobsvc",
+          "to": "metadata",
+          "label": "AssetExtractMetadata"
+        },
+        {
+          "from": "jobsvc",
+          "to": "template",
+          "label": "StorageTemplateMigrationSingle"
+        },
+        {
+          "from": "jobsvc",
+          "to": "media",
+          "label": "AssetGenerateThumbnails"
+        },
+        {
+          "from": "jobsvc",
+          "to": "smart",
+          "label": "SmartSearch"
+        },
+        {
+          "from": "jobsvc",
+          "to": "person",
+          "label": "AssetDetectFaces · FacialRecognition"
+        },
+        {
+          "from": "jobsvc",
+          "to": "ocr",
+          "label": "Ocr"
+        },
+        {
+          "from": "jobsvc",
+          "to": "x-redis",
+          "label": "queues the next job",
+          "kind": "async"
+        },
+        {
+          "from": "metadata",
+          "to": "x-db",
+          "label": "exif + geodata_places"
+        },
+        {
+          "from": "template",
+          "to": "x-files",
+          "label": "move into template path"
+        },
+        {
+          "from": "media",
+          "to": "x-files",
+          "label": "write thumbs + encoded video"
+        },
+        {
+          "from": "smart",
+          "to": "mlrepo",
+          "label": "encodeImage(path)"
+        },
+        {
+          "from": "person",
+          "to": "mlrepo",
+          "label": "detectFaces(path)"
+        },
+        {
+          "from": "ocr",
+          "to": "mlrepo",
+          "label": "detect + recognise text"
+        },
+        {
+          "from": "mlrepo",
+          "to": "x-ml",
+          "label": "POST /predict"
+        },
+        {
+          "from": "smart",
+          "to": "x-db",
+          "label": "upsert smart_search"
+        },
+        {
+          "from": "person",
+          "to": "x-db",
+          "label": "searchFaces · vchordrq"
+        },
+        {
+          "from": "person",
+          "to": "x-redis",
+          "label": "deferred recognition",
+          "kind": "async"
+        }
+      ]
+    },
+    "ml.components": {
+      "id": "ml.components",
+      "name": "Machine learning",
+      "label": "Inside the machine learning service",
+      "parent": "containers",
+      "blurb": "A thin HTTP shell around a model cache. Nothing here is persistent except the ONNX files on disk.",
+      "canvas": {
+        "w": 1470,
+        "h": 718
+      },
+      "nodes": [
+        {
+          "id": "fastapi",
+          "name": "FastAPI app",
+          "kind": "component",
+          "tech": "/predict · /ping",
+          "desc": "Two endpoints that matter. Every request names its own model and options, so the service holds no per-instance configuration of its own.",
+          "x": 340,
+          "y": 300
+        },
+        {
+          "id": "cache",
+          "name": "ModelCache",
+          "kind": "component",
+          "tech": "in-memory · TTL 300s",
+          "desc": "Keeps loaded models resident between requests and evicts them after five idle minutes. A background poller does the eviction, so idle memory actually comes back.",
+          "x": 620,
+          "y": 120
+        },
+        {
+          "id": "loader",
+          "name": "InferenceModel.load",
+          "kind": "component",
+          "tech": "download + session",
+          "desc": "On a cache miss it fetches the model from the Hub if it is not on disk yet, then builds a runtime session for it. First request after a model change is slow; the rest are not.",
+          "x": 900,
+          "y": 120
+        },
+        {
+          "id": "pool",
+          "name": "Thread pool",
+          "kind": "component",
+          "tech": "ThreadPoolExecutor",
+          "desc": "Inference is synchronous and CPU-bound, so it runs off the event loop. Without this one slow image would stall every other request.",
+          "x": 620,
+          "y": 440
+        },
+        {
+          "id": "clip",
+          "name": "CLIP models",
+          "kind": "component",
+          "tech": "visual + textual",
+          "desc": "Two halves of the same model, loaded independently. Images go through the visual half at upload; search queries go through the textual half.",
+          "x": 900,
+          "y": 340
+        },
+        {
+          "id": "face",
+          "name": "Facial recognition",
+          "kind": "component",
+          "tech": "detection + recognition",
+          "desc": "A detector that returns boxes and a recogniser that turns each box into an embedding. One request runs both.",
+          "x": 900,
+          "y": 460
+        },
+        {
+          "id": "ocrm",
+          "name": "OCR models",
+          "kind": "component",
+          "tech": "detection + recognition",
+          "desc": "Finds text regions, then reads them. Scores for the two stages are thresholded separately.",
+          "x": 900,
+          "y": 580
+        },
+        {
+          "id": "session",
+          "name": "ONNX session",
+          "kind": "component",
+          "tech": "ORT · CUDA/OpenVINO/ArmNN",
+          "desc": "Every model is ONNX, which is why the same image can run on a CPU, an Nvidia GPU or a Raspberry Pi accelerator by changing only the tag.",
+          "x": 1200,
+          "y": 460
+        },
+        {
+          "id": "x-micro",
+          "name": "Job worker",
+          "kind": "external",
+          "tech": "container boundary",
+          "desc": "Another container.",
+          "x": 60,
+          "y": 300
+        },
+        {
+          "id": "x-cache",
+          "name": "Model cache volume",
+          "kind": "store",
+          "tech": "/cache",
+          "desc": "The only volume this container mounts. It holds ONNX files and nothing about your photos.",
+          "x": 1200,
+          "y": 200
+        },
+        {
+          "id": "x-hf",
+          "name": "Hugging Face Hub",
+          "kind": "external",
+          "tech": "model download",
+          "desc": "Reached once per model, then never again.",
+          "x": 1200,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "x-micro",
+          "to": "fastapi",
+          "label": "POST /predict · multipart"
+        },
+        {
+          "from": "fastapi",
+          "to": "cache",
+          "label": "get(name, type, task)"
+        },
+        {
+          "from": "cache",
+          "to": "loader",
+          "label": "on miss"
+        },
+        {
+          "from": "loader",
+          "to": "x-hf",
+          "label": "snapshot_download"
+        },
+        {
+          "from": "loader",
+          "to": "x-cache",
+          "label": "write ONNX"
+        },
+        {
+          "from": "loader",
+          "to": "session",
+          "label": "new InferenceSession"
+        },
+        {
+          "from": "fastapi",
+          "to": "pool",
+          "label": "run off the event loop"
+        },
+        {
+          "from": "pool",
+          "to": "clip",
+          "label": "predict(image | text)"
+        },
+        {
+          "from": "pool",
+          "to": "face",
+          "label": "predict(image)"
+        },
+        {
+          "from": "pool",
+          "to": "ocrm",
+          "label": "predict(image)"
+        },
+        {
+          "from": "clip",
+          "to": "session",
+          "label": "session.run"
+        },
+        {
+          "from": "face",
+          "to": "session",
+          "label": "session.run"
+        },
+        {
+          "from": "ocrm",
+          "to": "session",
+          "label": "session.run"
+        },
+        {
+          "from": "session",
+          "to": "x-cache",
+          "label": "mmap weights"
+        }
+      ]
+    }
+  },
+  "flows": [
+    {
+      "id": "upload",
+      "name": "Back up a photo",
+      "level": "containers",
+      "meta": "12 cues · happy path",
+      "cues": [
+        {
+          "from": "mobile",
+          "to": "api",
+          "title": "Upload posted",
+          "note": "Multipart <b>POST /api/assets</b> with a checksum computed on the phone. If the server already holds that checksum it answers <b>duplicate</b> and the bytes are discarded."
+        },
+        {
+          "from": "api",
+          "to": "files",
+          "title": "Original written",
+          "note": "Straight to disk under <b>upload/</b>. This is the last time anything writes to the original file; every later stage only reads it."
+        },
+        {
+          "from": "api",
+          "to": "redis",
+          "title": "Metadata job queued",
+          "note": "The request ends here. <b>AssetExtractMetadata</b> goes on the metadataExtraction queue and the phone gets its 201 back."
+        },
+        {
+          "from": "redis",
+          "to": "micro",
+          "title": "Worker picks it up",
+          "note": "The job worker drains the queue. Exif is read, and the coordinates become a place name using a table in Postgres — <b>no geocoding API is called</b>."
+        },
+        {
+          "from": "micro",
+          "to": "files",
+          "title": "Thumbnails written",
+          "note": "The file is first moved into the user's folder template, then sharp produces preview and thumbnail plus a <b>thumbhash</b> for the blurred placeholder."
+        },
+        {
+          "from": "micro",
+          "to": "redis",
+          "title": "Second wave queued",
+          "note": "Only now, and only for an upload: <b>SmartSearch</b>, <b>AssetDetectFaces</b> and <b>Ocr</b> are queued together, plus <b>AssetEncodeVideo</b> if it is a video."
+        },
+        {
+          "from": "redis",
+          "to": "micro",
+          "title": "Fan-out runs",
+          "note": "Three separate queues with independent concurrency. A slow transcode cannot hold up face detection."
+        },
+        {
+          "from": "micro",
+          "to": "ml",
+          "title": "Embedding requested",
+          "note": "The preview is read and posted as <b>multipart bytes</b> with the model name attached. The ML container has no access to the media volume at all."
+        },
+        {
+          "from": "micro",
+          "to": "db",
+          "title": "Embedding stored",
+          "note": "Upserted into <b>smart_search</b>, indexed by vchordrq with cosine distance. The photo is searchable by description from this moment."
+        },
+        {
+          "from": "micro",
+          "to": "redis",
+          "title": "Client event published",
+          "note": "The job worker has no websocket connections of its own, so it publishes <b>on_upload_success</b> through the socket.io Redis adapter instead."
+        },
+        {
+          "from": "redis",
+          "to": "api",
+          "title": "Handed to the socket server",
+          "note": "The API worker holds the actual connection. The adapter is the only reason a job finishing in one process can reach a browser attached to another."
+        },
+        {
+          "from": "api",
+          "to": "mobile",
+          "title": "Photo appears",
+          "note": "Emitted into a room named after the user id, so the event reaches every device that person has open and nobody else."
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "name": "Search in your own words",
+      "level": "containers",
+      "meta": "4 cues · no job queue involved",
+      "cues": [
+        {
+          "from": "web",
+          "to": "api",
+          "title": "Query submitted",
+          "note": "<b>POST /api/search/smart</b> with free text like \"red bicycle in the snow\". This path is entirely synchronous — no queue, no worker."
+        },
+        {
+          "from": "api",
+          "to": "ml",
+          "title": "Query encoded",
+          "note": "The API worker calls the ML service directly. Results are memoised on <b>model name + query + language</b>, so a repeated search skips inference entirely."
+        },
+        {
+          "from": "api",
+          "to": "db",
+          "title": "Nearest neighbours",
+          "note": "Cosine search over the same <b>smart_search</b> vectors written at upload. <b>vchordrq.probes</b> is set per transaction, trading recall for latency."
+        },
+        {
+          "from": "api",
+          "to": "web",
+          "title": "Results returned",
+          "note": "Ranked assets, filtered to what this user is allowed to see. The text was never compared to a caption — both sides are vectors."
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "name": "One job, then the next",
+      "level": "jobs.components",
+      "meta": "11 cues · the orchestrator",
+      "cues": [
+        {
+          "from": "x-redis",
+          "to": "bull",
+          "title": "Job delivered",
+          "note": "One BullMQ worker per queue. Concurrency is applied after construction from system config, so the admin UI can retune it live."
+        },
+        {
+          "from": "bull",
+          "to": "jobsvc",
+          "title": "Handler dispatched",
+          "note": "Jobs are routed by decorator — a handler declares its <b>JobName</b> and queue, and startup fails loudly if one is missing."
+        },
+        {
+          "from": "jobsvc",
+          "to": "metadata",
+          "title": "Exif extracted",
+          "note": "Dates, dimensions, camera, coordinates. The place name comes from <b>geodata_places</b> in Postgres, matched within 500km of a populated place, falling back to country boundaries."
+        },
+        {
+          "from": "jobsvc",
+          "to": "template",
+          "title": "Moved into place",
+          "note": "The original is renamed into the user's folder template. This step only continues the chain when the asset came from an <b>upload</b> or a <b>copy</b>."
+        },
+        {
+          "from": "jobsvc",
+          "to": "media",
+          "title": "Preview generated",
+          "note": "Preview, thumbnail and thumbhash. Everything downstream reads the <b>preview</b>, never the original — which is why this step gates the rest."
+        },
+        {
+          "from": "jobsvc",
+          "to": "x-redis",
+          "title": "Fan-out queued",
+          "note": "Smart search, face detection and OCR queued in one call, plus video transcode for a video. The services being queued know nothing about each other."
+        },
+        {
+          "from": "x-redis",
+          "to": "bull",
+          "title": "Second wave delivered",
+          "note": "Three different queues now, each with its own concurrency and its own pause switch in the admin console."
+        },
+        {
+          "from": "bull",
+          "to": "jobsvc",
+          "title": "Dispatched again",
+          "note": "Same dispatch path, different handler. There is no separate pipeline engine — <b>onDone</b> is the whole thing."
+        },
+        {
+          "from": "jobsvc",
+          "to": "smart",
+          "title": "Embedding requested",
+          "note": "The preview path is handed over for CLIP encoding."
+        },
+        {
+          "from": "smart",
+          "to": "mlrepo",
+          "title": "Sent to a healthy server",
+          "note": "Healthy urls are tried first, then the unhealthy ones anyway, and only an all-url failure throws. A <b>/ping</b> check on a timer maintains the health map."
+        },
+        {
+          "from": "smart",
+          "to": "x-db",
+          "title": "Embedding upserted",
+          "note": "The configured model name is re-read after inference — if an admin swapped models mid-job the result is <b>discarded</b> rather than mixed into the index."
+        }
+      ]
+    },
+    {
+      "id": "faces",
+      "name": "A face waits for a crowd",
+      "level": "jobs.components",
+      "meta": "9 cues · deferred and retried",
+      "cues": [
+        {
+          "from": "x-redis",
+          "to": "bull",
+          "title": "Recognition delivered",
+          "note": "One job per detected face on the <b>facialRecognition</b> queue. Detection already ran and wrote the embeddings; this step only clusters."
+        },
+        {
+          "from": "bull",
+          "to": "jobsvc",
+          "title": "Dispatched",
+          "note": "A face that already has a person is skipped immediately, so re-running the queue over a whole library is cheap."
+        },
+        {
+          "from": "jobsvc",
+          "to": "person",
+          "title": "Neighbours looked up",
+          "note": "The face's embedding is searched against every other face this user owns, bounded by <b>maxDistance</b>."
+        },
+        {
+          "from": "person",
+          "to": "x-db",
+          "title": "Vector search runs",
+          "note": "A separate vchordrq index from smart search, with its own probes setting. Matches are also filtered by <b>birth date</b> so a person cannot be matched to photos predating them."
+        },
+        {
+          "from": "person",
+          "to": "x-redis",
+          "title": "Deferred, not discarded",
+          "note": "Fewer than <b>minFaces</b> matches means this is not yet a core face. Rather than inventing a person, the job is re-queued with <b>deferred: true</b> and drops to the back."
+        },
+        {
+          "from": "x-redis",
+          "to": "bull",
+          "title": "Second attempt",
+          "note": "By the time the deferred job runs, other faces from the same batch have been clustered — so the crowd it needed may now exist."
+        },
+        {
+          "from": "bull",
+          "to": "jobsvc",
+          "title": "Dispatched again",
+          "note": "Same handler, this time with the deferred flag set, which disables the defer branch. A face is deferred at most once."
+        },
+        {
+          "from": "jobsvc",
+          "to": "person",
+          "title": "Matched to a person",
+          "note": "If any neighbour already belongs to a person, this face joins them. Only a core face with no match at all creates a new unnamed person."
+        },
+        {
+          "from": "person",
+          "to": "x-db",
+          "title": "Face reassigned",
+          "note": "The face row gets its person id. A new person also triggers a thumbnail job, which is why an unnamed face appears in the People tab within seconds."
+        }
+      ]
+    }
+  ]
+}
