@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!--
+  Landing page for the GitHub Pages site, which exists to host the example
+  diagrams. Not part of the skill. The README is the documentation; this page
+  deliberately says almost nothing so the two cannot drift apart.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>draw-c4 — examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --backdrop:#17141C; --deep:#1E1A26; --rule:#332C40;
+    --chalk:#EDE7DC; --chalk-dim:#9A92A8; --chalk-faint:#6A6379;
+    --amber:#F2A65A;
+    --font-display:"Barlow Condensed","Arial Narrow",sans-serif;
+    --font-ui:"Barlow",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:clamp(32px,7vw,80px) clamp(20px,6vw,40px);
+    background:var(--backdrop); color:var(--chalk);
+    font-family:var(--font-ui); font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:40px;}
+  h1{
+    font-family:var(--font-display); font-weight:700; font-size:clamp(32px,7vw,44px);
+    letter-spacing:.14em; text-transform:uppercase; margin:0 0 6px;
+  }
+  .tag{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--chalk-faint); margin:0;}
+  .lede{color:var(--chalk-dim); margin:18px 0 0; max-width:60ch;}
+  h2{
+    font-family:var(--font-display); font-weight:700; font-size:12px;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--chalk-faint);
+    margin:0 0 16px; padding-bottom:10px; border-bottom:1px solid var(--rule);
+  }
+  a.card{
+    display:block; text-decoration:none; color:inherit;
+    border:1px solid var(--rule); border-radius:3px; overflow:hidden;
+    background:var(--deep); transition:border-color .15s;
+  }
+  a.card:hover, a.card:focus-visible{border-color:var(--amber); outline:none;}
+  a.card img{display:block; width:100%; height:auto; border-bottom:1px solid var(--rule);}
+  .card-body{padding:16px 18px;}
+  .card-body b{
+    font-family:var(--font-display); font-weight:700; font-size:19px;
+    letter-spacing:.04em; display:block;
+  }
+  a.card:hover b{color:var(--amber);}
+  .card-body span{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.06em;
+    color:var(--chalk-faint); display:block; margin-top:3px;
+  }
+  .card-body p{color:var(--chalk-dim); font-size:14px; margin:10px 0 0;}
+  footer{
+    border-top:1px solid var(--rule); padding-top:20px;
+    font-family:var(--font-mono); font-size:11px; color:var(--chalk-faint);
+  }
+  footer a{color:var(--chalk-dim);}
+  footer a:hover{color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>draw-c4</h1>
+    <p class="tag">interactive C4 architecture diagrams</p>
+    <p class="lede">
+      A Claude Code skill that reads a codebase and writes a single HTML file you can
+      drill into. These are diagrams it produced, hosted so you can try them before
+      installing anything.
+    </p>
+  </header>
+
+  <section>
+    <h2>Examples</h2>
+    <a class="card" href="examples/immich/architecture.html">
+      <img src="docs/containers.png" alt="The container level of the Immich diagram">
+      <div class="card-body">
+        <b>Immich</b>
+        <span>4 levels · 44 parts · 4 runtime flows</span>
+        <p>
+          Self-hosted photo and video backup. Pick a flow from the left rail to watch an
+          upload move from the phone through the queue to a searchable embedding.
+        </p>
+      </div>
+    </a>
+  </section>
+
+  <footer>
+    <a href="https://github.com/ShibaInu0817/draw-c4-skill">github.com/ShibaInu0817/draw-c4-skill</a>
+  </footer>
+
+</div>
+</body>
+</html>
